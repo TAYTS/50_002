@@ -1,0 +1,44 @@
+module display_status #(
+    CHARS = 4 : CHARS > 0, // set the no. of characters
+    DIV = 16 : DIV >= 0    // control the switching speed of characters
+  )(
+    input clk,             // clock
+    input rst,             // reset
+    input status[1],          // 1 for pass, 0 for fail, 2 for none
+    output seg [7],        // LED segments
+    output sel [CHARS]     // character selected
+  ) {
+  
+  // number of bits required to store CHARS-1
+  const CHARS_BITS = $clog2(CHARS);
+  
+  
+  // iterate from 0 to CHARS-1 to diplay each character
+  .clk(clk), .rst(rst) {
+    counter ctr (#DIV(DIV), #SIZE(CHARS_BITS), #TOP(CHARS-1)); 
+  }
+
+  fail_str fail_dec;                        // fail decoder 
+  pass_str pass_dec;                        // pass decoder
+  decoder digit_dec (#WIDTH(CHARS_BITS));   // digit decoder
+  
+  always {
+
+    // Set invalid input for fail_dec and pass_dec
+    fail_dec.char = 3b100;
+    pass_dec.char = 3b100;
+
+    // Update the fail_dec and pass_dec based
+    // on the status
+    case(status) {
+      0: fail_dec.char = ctr.value;
+         seg = fail_dec.segs;
+      1: pass_dec.char = ctr.value;
+         seg = pass_dec.segs;
+      default: seg = 7h000000;
+    }
+
+    digit_dec.in = ctr.value;
+    sel = digit_dec.out;    
+  }
+}
