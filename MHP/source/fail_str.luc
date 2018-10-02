@@ -1,0 +1,15 @@
+module fail_str (
+    input char[3],  // bit size for char selection
+    output segs[7]  // bit size for the output
+  ) {
+
+  always {
+    case(char) {
+      0: segs = 7b0111000;
+      1: segs = 7b0000110;
+      2: segs = 7b1110111;
+      3: segs = 7b1110001;
+      default: segs = 7b000000;
+    }
+  }
+}
