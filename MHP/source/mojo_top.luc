@@ -32,9 +32,8 @@ module mojo_top (
     
     .rst(rst) {
       display_status seg;
-      
-      
       counter ctr (#SIZE(3), #DIV(25));
+      dff mode[1];
       //multi_seven_seg seg;
     }
     
@@ -55,17 +54,33 @@ module mojo_top (
     
     io_led = 3x{{8h00}};    // turn LEDs off
     
+    // define the testing mode
+    mode.d = io_dip[2][7];
+          
     test_cases.idx = ctr.value;
-    a = test_cases.values[1];
-    b = test_cases.values[0];
+    // a, b input for adder_fsm depends on the testing mode
+    // mode: 1 => use the automated test_cases
+    if (mode.q == 1b1) {
+      a = test_cases.values[1];
+      b = test_cases.values[0];
+      adder_fsm.a = test_cases.values[1];
+      adder_fsm.b = test_cases.values[0];
+    }
+    // mode: 0 => manually toggle the group 1 switch
+    else {
+      a = io_dip[0][0];
+      b = io_dip[0][1];
+      adder_fsm.a = io_dip[0][0];
+      adder_fsm.b = io_dip[0][1];  
+    }
     c = adder_fsm.cin;
     
-    adder_fsm.a = test_cases.values[1];
-    adder_fsm.b = test_cases.values[0];
+
     adder_fsm.raw_s = raw_s;
     adder_fsm.raw_c = raw_c;
  
-    seg.status = adder_fsm.result;
+    seg.mode = io_dip[2][7];
+    seg.status = io_dip[2][7];
     //seg.values = {test_cases.values[1], test_cases.values[0], adder_fsm.result, adder_fsm.check}; 
     io_seg = ~seg.seg;
     io_sel = ~seg.sel;

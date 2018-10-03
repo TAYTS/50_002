@@ -4,7 +4,9 @@ module display_status #(
   )(
     input clk,             // clock
     input rst,             // reset
-    input status[1],       // 1 for pass, 0 for fail, 2 for none
+    input mode[1],         // 1 for auto, 0 for manual
+    input status[2],       // 1 for pass, 0 for fail(mode: 0)
+                           // 2 for idle, 1 for sum, 0 for ci_o(mode: 1)
     output seg [7],        // LED segments
     output sel [CHARS]     // character selected
   ) {
@@ -18,24 +20,45 @@ module display_status #(
     counter ctr (#DIV(DIV), #SIZE(CHARS_BITS), #TOP(CHARS-1), #UP(1)); 
   }
 
-  fail_str fail_dec;                        // fail decoder 
-  pass_str pass_dec;                        // pass decoder
+  fail_str fail_dec;    // fail decoder 
+  pass_str pass_dec;    // pass decoder
+  sum_str sum_dec;      // sum decoder
+  ci_o ci_o_dec;        // ci_o decoder
+  idle_str idle_dec;    // idle decoder    
   decoder digit_dec (#WIDTH(CHARS_BITS));   // digit decoder
   
   always {
 
-    // Set invalid input for fail_dec and pass_dec
-    fail_dec.char = 3b100;
-    pass_dec.char = 3b100;
+    // Set empty input for fail_dec and pass_dec
+    fail_dec.char = 2b00;
+    pass_dec.char = 2b00;
+    sum_dec.char = 2b00;
+    ci_o_dec.char = 2b00;
+    idle_dec.char = 2b00;
 
-    // Update the fail_dec and pass_dec based
-    // on the status
-    case(status) {
-      0: fail_dec.char = ctr.value;
-         seg = fail_dec.segs;
-      1: pass_dec.char = ctr.value;
-         seg = pass_dec.segs;
-      default: seg = 7h000000;
+    if (mode) {
+      if (status == 2b01) {
+        pass_dec.char = ctr.value;
+        seg = pass_dec.segs;
+      }
+      else {
+        fail_dec.char = ctr.value;
+        seg = fail_dec.segs;
+      }
+    }
+    else {
+      if (status == 2b10) {
+        idle_dec.char = ctr.value;
+        seg = idle_dec.segs;
+      }
+      if (status == 2b01) {
+        sum_dec.char = ctr.value;
+        seg = sum_dec.segs;
+      }
+      if (status == 2b00){
+        ci_o_dec.char = ctr.value;
+        seg = ci_o_dec.segs; 
+      }   
     }
 
     digit_dec.in = ctr.value;

@@ -1,0 +1,15 @@
+module idle_str (
+    input char[2],
+    output segs[7]
+  ) {
+
+  always {
+    case(char) {
+      0: segs = 7b1111001;
+      1: segs = 7b0111000;
+      2: segs = 7b0111111;
+      3: segs = 7b0110000;
+      default: segs = 7b000000;
+    }
+  }
+}
