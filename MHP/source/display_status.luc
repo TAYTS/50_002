@@ -4,7 +4,7 @@ module display_status #(
   )(
     input clk,             // clock
     input rst,             // reset
-    input status[1],          // 1 for pass, 0 for fail, 2 for none
+    input status[1],       // 1 for pass, 0 for fail, 2 for none
     output seg [7],        // LED segments
     output sel [CHARS]     // character selected
   ) {
@@ -15,7 +15,7 @@ module display_status #(
   
   // iterate from 0 to CHARS-1 to diplay each character
   .clk(clk), .rst(rst) {
-    counter ctr (#DIV(DIV), #SIZE(CHARS_BITS), #TOP(CHARS-1)); 
+    counter ctr (#DIV(DIV), #SIZE(CHARS_BITS), #TOP(CHARS-1), #UP(1)); 
   }
 
   fail_str fail_dec;                        // fail decoder 
@@ -39,6 +39,6 @@ module display_status #(
     }
 
     digit_dec.in = ctr.value;
-    sel = digit_dec.out;    
+    sel = digit_dec.out;
   }
 }

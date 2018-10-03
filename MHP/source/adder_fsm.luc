@@ -1,0 +1,76 @@
+module adder_fsm (
+    input clk,         // clock
+    input rst,         // reset
+    input a,
+    input b,
+    input raw_s,
+    input raw_c,
+    output cin,
+    output result[1]   // result of FSM: 1 for PASS, 0 for FAIL
+  ) {
+  .clk(clk) {
+    .rst(rst) {
+      fsm state = {IDLE, SUM, CIN_OUT, FAIL};
+      dff c[1];
+    }
+  }
+
+  always {
+    // Set the default result as PASS
+    c.d = 0;
+    result = 1b1;
+
+    case (state.q) {
+      state.IDLE:
+        if (a && b)
+          if (~raw_s && raw_c)
+            state.d = state.CIN_OUT;
+          else
+            state.d = state.FAIL;
+        if (a || b)
+          if (raw_s && ~raw_c)
+            state.d = state.SUM;
+          else
+            state.d = state.FAIL;
+        else
+          if (raw_s || raw_c)
+            state.d = state.FAIL;
+
+      state.SUM:
+        if (a && b)
+          if (~raw_s && raw_c)
+            state.d = state.CIN_OUT;
+          else
+            state.d = state.FAIL;
+        if (a || b)
+          if (~raw_s && raw_c)
+            state.d =  state.FAIL;
+        else
+          if (~raw_s && ~raw_c)
+            state.d = state.IDLE;
+          else
+            state.d = state.FAIL;
+
+      state.CIN_OUT:
+        c.d = 1;
+        if (a && b)
+          if (~raw_s || ~raw_c)
+            state.d = state.FAIL;
+        if (a || b)
+          if (raw_s || ~raw_c)
+            state.d = state.FAIL;
+        else
+          if (raw_s && ~raw_c)
+            state.d = state.SUM;
+          else
+            state.d = state.FAIL;
+
+      state.FAIL:
+        result = 1b0;
+        if (rst)
+          state.d = state.IDLE;    
+    }
+    cin = c.q;
+
+  }
+}

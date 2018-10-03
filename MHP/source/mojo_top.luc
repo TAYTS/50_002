@@ -15,11 +15,15 @@ module mojo_top (
     output io_seg [8],      // 7-segment LEDs on IO Shield
     output io_sel [4],      // Digit select on IO Shield
     input io_button [5],    // 5 buttons on IO Shield
-    input io_dip [3][8]     // DIP switches on IO Shield
+    input io_dip [3][8],     // DIP switches on IO Shield
+    output a,
+    output b,
+    output c,
+    input raw_s,
+    input raw_c
   ) {
   
-  sig rst;                  // reset signal
-  sig result[24];           // store the result of the mathematic calculation for 8 by 8 bits
+  sig rst;    // reset signal
   
   .clk(clk) {
     // The reset conditioner is used to synchronize the reset signal to the FPGA
@@ -28,8 +32,17 @@ module mojo_top (
     
     .rst(rst) {
       display_status seg;
+      
+      
+      counter ctr (#SIZE(3), #DIV(25));
+      //multi_seven_seg seg;
+    }
+    
+    .rst(io_button[1]) {
+      adder_fsm adder_fsm;
     }
   }
+  test_cases test_cases;
 
   always {
     reset_cond.in = ~rst_n; // input raw inverted reset signal
@@ -41,9 +54,19 @@ module mojo_top (
     avr_rx = bz;            // not using serial port
     
     io_led = 3x{{8h00}};    // turn LEDs off
- 
-    seg.status = 1;
     
+    test_cases.idx = ctr.value;
+    a = test_cases.values[1];
+    b = test_cases.values[0];
+    c = adder_fsm.cin;
+    
+    adder_fsm.a = test_cases.values[1];
+    adder_fsm.b = test_cases.values[0];
+    adder_fsm.raw_s = raw_s;
+    adder_fsm.raw_c = raw_c;
+ 
+    seg.status = adder_fsm.result;
+    //seg.values = {test_cases.values[1], test_cases.values[0], adder_fsm.result, adder_fsm.check}; 
     io_seg = ~seg.seg;
     io_sel = ~seg.sel;
   }

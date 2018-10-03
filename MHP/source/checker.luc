@@ -1,0 +1,13 @@
+module checker (
+    input expect[1],  // expected value
+    input raw[1],     // actual value
+    output result[1]
+  ) {
+
+  always {
+    if (raw == expect)
+      result = 1b1;
+    else
+      result = 1b0;
+  }
+}
