@@ -6,7 +6,8 @@ module adder_fsm (
     input raw_s,
     input raw_c,
     output cin,
-    output result[1]   // result of FSM: 1 for PASS, 0 for FAIL
+    output result[1],   // result of FSM: 1 for PASS, 0 for FAIL
+    output status
   ) {
   .clk(clk) {
     .rst(rst) {
@@ -25,9 +26,11 @@ module adder_fsm (
     // Set the default values
     c.d = 0;
     result = 1b1;
+    status = 3b0;
 
     case (state.q) {
       state.IDLE:
+        status = 3b100;
         if (a && b)
           if (raw_s == C1[0] && raw_c == C1[1]) {
             state.d = state.C1;
@@ -45,6 +48,7 @@ module adder_fsm (
             state.d = state.FAIL;
 
       state.C0:
+        status = 3b011;
         if (a && b)
           if (raw_s == C1[0] && raw_c == C1[1]) {
             state.d = state.C1;
@@ -62,6 +66,7 @@ module adder_fsm (
             state.d = state.FAIL;
 
       state.C1:
+        status = 3b010;
         // Check if the state change
         if (~a && ~b)
           if (raw_s == C0[0] && raw_c == C0[1]) {
@@ -86,6 +91,7 @@ module adder_fsm (
             state.d = state.FAIL;
 
       state.CS:
+      status = 3001;
         if (~a && ~b) {
           if (raw_s == C0[0] && raw_c == C0[1]) {
             state.d = state.C0;
@@ -109,6 +115,7 @@ module adder_fsm (
             state.d = state.FAIL;
       
       state.FAIL:
+        status = 3b000;
         result = 1b0;
         if (rst)
           state.d = state.IDLE;    

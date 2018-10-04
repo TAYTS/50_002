@@ -32,7 +32,7 @@ module mojo_top (
     
     .rst(rst) {
       display_status seg;
-      counter ctr (#SIZE(3), #DIV(25));
+      counter ctr (#SIZE(3), #DIV(25), #TOP(7));
       dff mode[1];
       //multi_seven_seg seg;
     }
@@ -80,7 +80,15 @@ module mojo_top (
     adder_fsm.raw_c = raw_c;
  
     seg.mode = io_dip[2][7];
-    seg.status = io_dip[2][7];
+    
+    // auto mode
+    if (io_dip[2][7])
+      seg.status = adder_fsm.result;
+    // manual mode
+    else
+      seg.status = adder_fsm.status;
+    
+
     //seg.values = {test_cases.values[1], test_cases.values[0], adder_fsm.result, adder_fsm.check}; 
     io_seg = ~seg.seg;
     io_sel = ~seg.sel;
