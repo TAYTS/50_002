@@ -10,61 +10,104 @@ module adder_fsm (
   ) {
   .clk(clk) {
     .rst(rst) {
-      fsm state = {IDLE, SUM, CIN_OUT, FAIL};
+      fsm state = {IDLE, C0, C1, CS, FAIL};
       dff c[1];
     }
   }
+  
+  const IDLE = 2b00;
+  const C0 = 2b01;
+  const C1 = 2b10;
+  const CS = 2b11;
 
   always {
-    // Set the default result as PASS
+
+    // Set the default values
     c.d = 0;
     result = 1b1;
 
     case (state.q) {
       state.IDLE:
         if (a && b)
-          if (~raw_s && raw_c)
-            state.d = state.CIN_OUT;
+          if (raw_s == C1[0] && raw_c == C1[1]) {
+            state.d = state.C1;
+            c.d = 1;
+          }
           else
             state.d = state.FAIL;
         if (a || b)
-          if (raw_s && ~raw_c)
-            state.d = state.SUM;
+          if (raw_s == C0[0] && raw_c == C0[1])
+            state.d = state.C0;
           else
             state.d = state.FAIL;
         else
-          if (raw_s || raw_c)
+          if (raw_s != IDLE[0] || raw_c != IDLE[1])
             state.d = state.FAIL;
 
-      state.SUM:
+      state.C0:
         if (a && b)
-          if (~raw_s && raw_c)
-            state.d = state.CIN_OUT;
+          if (raw_s == C1[0] && raw_c == C1[1]) {
+            state.d = state.C1;
+            c.d = 1;
+          }
           else
             state.d = state.FAIL;
         if (a || b)
-          if (~raw_s && raw_c)
+          if (raw_s != C0[0] || raw_c != C0[1])
             state.d =  state.FAIL;
         else
-          if (~raw_s && ~raw_c)
+          if (raw_s == IDLE[0] && raw_c == IDLE[1])
             state.d = state.IDLE;
           else
             state.d = state.FAIL;
 
-      state.CIN_OUT:
-        c.d = 1;
-        if (a && b)
-          if (~raw_s || ~raw_c)
-            state.d = state.FAIL;
-        if (a || b)
-          if (raw_s || ~raw_c)
-            state.d = state.FAIL;
-        else
-          if (raw_s && ~raw_c)
-            state.d = state.SUM;
+      state.C1:
+        // Check if the state change
+        if (~a && ~b)
+          if (raw_s == C0[0] && raw_c == C0[1]) {
+            state.d = state.C0;
+            c.d = 0;
+          }
           else
             state.d = state.FAIL;
+        
+        // Check is the raw_c valid
+        if (raw_c != C1[0])
+          state.d = state.FAIL;
 
+        c.d = 1;
+        if (a && b)
+          if (raw_s == CS[0])
+            state.d = state.CS;
+          else
+            state.d = state.FAIL;
+        if (a || b)
+          if (raw_s != C1[0])
+            state.d = state.FAIL;
+
+      state.CS:
+        if (~a && ~b) {
+          if (raw_s == C0[0] && raw_c == C0[1]) {
+            state.d = state.C0;
+            c.d = 0;
+          }
+          else
+            state.d = state.FAIL; 
+        }
+        
+        // Check is the raw_c valid
+        if (raw_c != C1[0])
+          state.d = state.FAIL;
+
+        if (a || b)
+          if (raw_s == C1[0])
+            state.d = state.C1;
+            c.d = 1;
+        
+        if (a && b)
+          if (raw_s != CS[0])
+            state.d = state.FAIL;
+      
       state.FAIL:
         result = 1b0;
         if (rst)
