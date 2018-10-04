@@ -5,15 +5,15 @@ module display_status #(
     input clk,             // clock
     input rst,             // reset
     input mode[1],         // 1 for auto, 0 for manual
-    input status[2],       // 1 for pass, 0 for fail(mode: 0)
-                           // 2 for idle, 1 for sum, 0 for ci_o(mode: 1)
+    input status[3],       // 1 for pass, 0 for fail(mode: 1)
+                           // 4 for idle, 3 for c0, 2 for c1, 1 for cs, 0 for fail (mode: 0)
     output seg [7],        // LED segments
     output sel [CHARS]     // character selected
   ) {
   
   // number of bits required to store CHARS-1
   const CHARS_BITS = $clog2(CHARS);
-  
+  const DEF_OUT = 7b0;
   
   // iterate from 0 to CHARS-1 to diplay each character
   .clk(clk), .rst(rst) {
@@ -22,43 +22,54 @@ module display_status #(
 
   fail_str fail_dec;    // fail decoder 
   pass_str pass_dec;    // pass decoder
-  sum_str sum_dec;      // sum decoder
-  ci_o ci_o_dec;        // ci_o decoder
-  idle_str idle_dec;    // idle decoder    
+  c0 c0_dec;            // c0 state(0, 1) decoder
+  c1 c1_dec;            // c1 state(1, 0) decoder
+  cs cs_dec;            // cs state(1, 1) decoder
+  idle_str idle_dec;    // idle state(0, 0) decoder
   decoder digit_dec (#WIDTH(CHARS_BITS));   // digit decoder
   
   always {
 
     // Set empty input for fail_dec and pass_dec
-    fail_dec.char = 2b00;
-    pass_dec.char = 2b00;
-    sum_dec.char = 2b00;
-    ci_o_dec.char = 2b00;
-    idle_dec.char = 2b00;
+    fail_dec.char = 3b0;
+    pass_dec.char = 3b0;
+    c0_dec.char = 3b0;
+    c1_dec.char = 3b0;
+    cs_dec.char = 3b0;
+    idle_dec.char = 3b0;
 
     if (mode) {
-      if (status == 2b01) {
-        pass_dec.char = ctr.value;
-        seg = pass_dec.segs;
-      }
-      else {
-        fail_dec.char = ctr.value;
-        seg = fail_dec.segs;
+      case(status) {
+        3b000:
+          pass_dec.char = ctr.value;
+          seg = pass_dec.segs;
+        3b001:
+          fail_dec.char = ctr.value;
+          seg = fail_dec.segs;
+        default:
+          seg = DEF_OUT;
       }
     }
     else {
-      if (status == 2b10) {
-        idle_dec.char = ctr.value;
-        seg = idle_dec.segs;
-      }
-      if (status == 2b01) {
-        sum_dec.char = ctr.value;
-        seg = sum_dec.segs;
-      }
-      if (status == 2b00){
-        ci_o_dec.char = ctr.value;
-        seg = ci_o_dec.segs; 
-      }   
+      case(status) {
+        3b100:  // idle state
+          idle_dec.char = ctr.value;
+          seg = idle_dec.segs;
+        3b011:  // c0 state
+          c0_dec.char = ctr.value;
+          seg = c0_dec.segs;
+        3b010:  // c1 state
+          c1_dec.char = ctr.value;
+          seg = c1_dec.segs;
+        3b001:  // cs state
+          cs_dec.char = ctr.value;
+          seg = cs_dec.segs;
+        3b00:  // fail
+          fail_dec.char = ctr.value;
+          seg = fail_dec.segs; 
+        default:
+          seg = DEF_OUT;
+      }  
     }
 
     digit_dec.in = ctr.value;
