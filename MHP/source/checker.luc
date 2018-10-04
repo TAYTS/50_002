@@ -1,13 +1,13 @@
 module checker (
-    input expect[1],  // expected value
-    input raw[1],     // actual value
-    output result[1]
+    input expect[2],  // expected value
+    input raw[2],     // actual value
+    output pass[1]
   ) {
 
   always {
     if (raw == expect)
-      result = 1b1;
+      pass = 1b1;
     else
-      result = 1b0;
+      pass = 1b0;
   }
 }

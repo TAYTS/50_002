@@ -1,19 +1,19 @@
 module test_cases (
     input idx[3],      // index of test cases
-    output values[2]   // test case array [A, B]
+    output values[5]   // test case array [A, B]
   ) {
   
   always {
     case(idx) {
-      0: values = 2b00;
-      1: values = 2b10;
-      2: values = 2b01;
-      3: values = 2b11;
-      4: values = 2b10;
-      5: values = 2b01;
-      6: values = 2b11;
-      7: values = 2b00;
-      default: values = 2b00;
+      0: values = 5b00000;
+      1: values = 5b01001;
+      2: values = 5b01010;
+      3: values = 5b10011;
+      4: values = 5b01100;
+      5: values = 5b10101;
+      6: values = 5b10110;
+      7: values = 5b11111;
+      default: values = 5b00000;
     }
   }
 }

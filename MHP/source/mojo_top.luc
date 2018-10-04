@@ -30,20 +30,33 @@ module mojo_top (
     // clock. This ensures the entire FPGA comes out of reset at the same time.
     reset_conditioner reset_cond;
     
+    pipeline raw_cout(#DEPTH(2));
+    pipeline raw_sum(#DEPTH(2));
+
+    edge_detector raise_a(#RISE(1), #FALL(1));
+    edge_detector raise_b(#RISE(1), #FALL(1));
+    edge_detector raise_c(#RISE(1), #FALL(1));
+    
     .rst(rst) {
       display_status seg;
-      counter ctr (#SIZE(3), #DIV(25), #TOP(7));
+      dff ctr[3];
       dff mode[1];
-      //multi_seven_seg seg;
+      //adder_fsm adder_fsm;
     }
-    
     .rst(io_button[1]) {
-      adder_fsm adder_fsm;
+      adder_fsm adder_fsm; 
     }
   }
   test_cases test_cases;
-
   always {
+    raw_cout.in = raw_c;
+    raw_sum.in = raw_s;
+    
+    raise_a.in = io_dip[0][0];
+    raise_b.in = io_dip[0][1];
+    raise_c.in = io_dip[0][2];
+    
+    //// Pre-set value for unused pin-out ////
     reset_cond.in = ~rst_n; // input raw inverted reset signal
     rst = reset_cond.out;   // conditioned reset
     
@@ -51,46 +64,101 @@ module mojo_top (
     spi_miso = bz;          // not using SPI
     spi_channel = bzzzz;    // not using flags
     avr_rx = bz;            // not using serial port
+    //////////////////////////////////////////
+
     
-    io_led = 3x{{8h00}};    // turn LEDs off
-    
-    // define the testing mode
+    //// Define the testing and display mode ////
+    //// 1: Auto, 0: Manual                  ////
     mode.d = io_dip[2][7];
-          
-    test_cases.idx = ctr.value;
-    // a, b input for adder_fsm depends on the testing mode
-    // mode: 1 => use the automated test_cases
-    if (mode.q == 1b1) {
-      a = test_cases.values[1];
-      b = test_cases.values[0];
-      adder_fsm.a = test_cases.values[1];
-      adder_fsm.b = test_cases.values[0];
+    /////////////////////////////////////////////
+    
+    //// Define the input for FSM module  and output of pinout ////
+    /////////////////////////////////////////
+    //// increment the test_cases using counter ////
+    test_cases.idx = ctr.q;
+    ////////////////////////////////////////////////
+    //// mode: 1 => use the automated test_cases //////////
+    if (mode.q) {
+      //// pinout output ////
+      a = test_cases.values[0];
+      b = test_cases.values[1];
+      c = test_cases.values[2];
+      //// adder_fsm input ////
+      adder_fsm.a = test_cases.values[0];
+      adder_fsm.b = test_cases.values[1];
+      adder_fsm.c = test_cases.values[2];
     }
-    // mode: 0 => manually toggle the group 1 switch
+    //// mode: 0 => manually toggle the group 1 switch ////
     else {
+      //// pinout output ////
       a = io_dip[0][0];
       b = io_dip[0][1];
+      c = io_dip[0][2];
+      //// adder_fsm input ////
       adder_fsm.a = io_dip[0][0];
-      adder_fsm.b = io_dip[0][1];  
+      adder_fsm.b = io_dip[0][1];
+      adder_fsm.c = io_dip[0][2];  
     }
-    c = adder_fsm.cin;
-    
+    ///////////////////////////////////////////////////////
 
-    adder_fsm.raw_s = raw_s;
-    adder_fsm.raw_c = raw_c;
- 
-    seg.mode = io_dip[2][7];
-    
-    // auto mode
-    if (io_dip[2][7])
-      seg.status = adder_fsm.result;
-    // manual mode
-    else
-      seg.status = adder_fsm.status;
-    
+    //// Provide actual and raw data for adder_fsm checker ////
+    adder_fsm.raw = c{raw_cout.out, raw_sum.out};
+    if (mode.q) {
+      adder_fsm.expect = test_cases.values[4:3];
+    } else {
+      if ((io_dip[0][0] + io_dip[0][1] + io_dip[0][2]) == 3) {
+        adder_fsm.expect = 2b11;
+        io_led[1][7] = 1b1;
+      } else if ((io_dip[0][0] + io_dip[0][1] + io_dip[0][2]) == 2) {
+        adder_fsm.expect = 2b10;
+        io_led[1][6] = 1b1;
+      } else if ((io_dip[0][0] + io_dip[0][1] + io_dip[0][2]) == 1) {
+        adder_fsm.expect = 2b01;
+        io_led[1][5] = 1b1;
+      } else {
+        adder_fsm.expect = 2b00;
+        io_led[1][4] = 1b1;
+      }
+    }
+    //////////////////////////////////////////////////////////
 
-    //seg.values = {test_cases.values[1], test_cases.values[0], adder_fsm.result, adder_fsm.check}; 
+    //// Display the adder_fsm checker result ////
+    seg.status = adder_fsm.pass;
+    //////////////////////////////////////////////
+    
+    //// Display out comparison (FAIL) ////
+    if (~adder_fsm.pass) {
+      // group 1 LED: inputs for the full bit adder
+      io_led[0] = adder_fsm.input_ref;
+      
+      // group 2 LED: expected output
+      io_led[1] = adder_fsm.ans_ref;
+      
+      // group 3 LED: actual output
+      io_led[2] = adder_fsm.err_ref;
+    }
+    else {
+      // if everthing pass, NO LED
+      io_led = 3x{{8h00}};
+    }
+    ///////////////////////////////////////
+    
+    if (adder_fsm.pass == 2b00) {
+      seg.status = adder_fsm.pass; 
+    } else {
+      if (mode.q) {
+        if (ctr.q <= 7) {
+          ctr.d = ctr.q + 1;
+          seg.status = 2b10;
+        } else
+          seg.status = adder_fsm.pass;
+      } else {
+        seg.status = adder_fsm.pass;  
+      }
+        
+      
+    }
     io_seg = ~seg.seg;
-    io_sel = ~seg.sel;
+    io_sel = ~seg.sel;    
   }
 }

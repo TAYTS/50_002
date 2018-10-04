@@ -1,126 +1,99 @@
 module adder_fsm (
-    input clk,         // clock
-    input rst,         // reset
-    input a,
-    input b,
-    input raw_s,
-    input raw_c,
-    output cin,
-    output result[1],   // result of FSM: 1 for PASS, 0 for FAIL
-    output status
+    input clk,           // clock
+    input rst,           // reset
+    input a[1],             // input A
+    input b[1],             // input B
+    input c[1],
+    input expect[2],
+    input raw[2],         // SUM of the full adder
+    output pass[2],    // result of FSM: 1 for PASS, 0 for FAIL
+    output input_ref[3],
+    output ans_ref[2],
+    output err_ref[2]
   ) {
   .clk(clk) {
     .rst(rst) {
-      fsm state = {IDLE, C0, C1, CS, FAIL};
-      dff c[1];
+      fsm state = {IDLE, S, C, CS, FAIL};
     }
   }
   
-  const IDLE = 2b00;
-  const C0 = 2b01;
-  const C1 = 2b10;
-  const CS = 2b11;
+  checker checker;
+  const PASS = 2b01;
+  const FAIL = 2b00;
 
   always {
+    
+    checker.expect = expect;
+    checker.raw = raw;
+    
+    input_ref = c{c, b, a};    
+    ans_ref = expect;
+    err_ref = raw;
 
-    // Set the default values
-    c.d = 0;
-    result = 1b1;
-    status = 3b0;
+    pass = PASS;
 
     case (state.q) {
       state.IDLE:
-        status = 3b100;
-        if (a && b)
-          if (raw_s == C1[0] && raw_c == C1[1]) {
-            state.d = state.C1;
-            c.d = 1;
-          }
-          else
-            state.d = state.FAIL;
-        if (a || b)
-          if (raw_s == C0[0] && raw_c == C0[1])
-            state.d = state.C0;
-          else
-            state.d = state.FAIL;
-        else
-          if (raw_s != IDLE[0] || raw_c != IDLE[1])
-            state.d = state.FAIL;
-
-      state.C0:
-        status = 3b011;
-        if (a && b)
-          if (raw_s == C1[0] && raw_c == C1[1]) {
-            state.d = state.C1;
-            c.d = 1;
-          }
-          else
-            state.d = state.FAIL;
-        if (a || b)
-          if (raw_s != C0[0] || raw_c != C0[1])
-            state.d =  state.FAIL;
-        else
-          if (raw_s == IDLE[0] && raw_c == IDLE[1])
-            state.d = state.IDLE;
-          else
-            state.d = state.FAIL;
-
-      state.C1:
-        status = 3b010;
-        // Check if the state change
-        if (~a && ~b)
-          if (raw_s == C0[0] && raw_c == C0[1]) {
-            state.d = state.C0;
-            c.d = 0;
-          }
-          else
-            state.d = state.FAIL;
-        
-        // Check is the raw_c valid
-        if (raw_c != C1[0])
-          state.d = state.FAIL;
-
-        c.d = 1;
-        if (a && b)
-          if (raw_s == CS[0])
-            state.d = state.CS;
-          else
-            state.d = state.FAIL;
-        if (a || b)
-          if (raw_s != C1[0])
-            state.d = state.FAIL;
-
-      state.CS:
-      status = 3001;
-        if (~a && ~b) {
-          if (raw_s == C0[0] && raw_c == C0[1]) {
-            state.d = state.C0;
-            c.d = 0;
-          }
-          else
-            state.d = state.FAIL; 
-        }
-        
-        // Check is the raw_c valid
-        if (raw_c != C1[0])
-          state.d = state.FAIL;
-
-        if (a || b)
-          if (raw_s == C1[0]) {
-            state.d = state.C1;
-            c.d = 1;
-          }
-        if (a && b)
-          if (raw_s != CS[0])
-            state.d = state.FAIL;
-      
-      state.FAIL:
-        status = 3b000;
-        result = 1b0;
         if (rst)
-          state.d = state.IDLE;    
-    }
-    cin = c.q;
+          state.d = state.IDLE;
+        if ((a + b + c) == 3)
+          state.d = state.CS;
+        if ((a + b + c) == 2)
+          state.d = state.C;
+        if ((a + b + c) == 1)
+          state.d = state.S;
+        if ((a + b + c) == 0)
+          // Check the Sum and Cout
+          if (~checker.pass)
+            state.d = state.FAIL;        
 
+      state.S:
+        if (rst)
+          state.d = state.IDLE;
+        if ((a + b + c) == 3)
+          state.d = state.CS;
+        if ((a + b + c) == 2)
+          state.d = state.C;
+        if ((a + b + c) == 1)
+          // Check the Sum and Cout
+          if (~checker.pass)
+            state.d = state.FAIL;       
+        if ((a + b + c) == 0)
+          state.d = state.IDLE;
+        
+      state.C:
+        if (rst)
+          state.d = state.IDLE;
+        if ((a + b + c) == 3)
+          state.d = state.CS;
+        if ((a + b + c) == 2)
+          // Check the Sum and Cout
+          if (~checker.pass)
+            state.d = state.FAIL;
+        if ((a + b + c) == 1)
+          state.d = state.S;
+        if ((a + b + c) == 0)
+          state.d = state.IDLE;
+        
+      state.CS:
+        if (rst)
+          state.d = state.IDLE;
+        if ((a + b + c) == 3)
+          // Check the Sum and Cout
+          if (~checker.pass)
+            state.d = state.FAIL;
+        if ((a + b + c) == 2)
+          state.d = state.C;
+        if ((a + b + c) == 1)
+          state.d = state.S;
+        if ((a + b + c) == 0)
+          state.d = state.IDLE;
+
+      state.FAIL:
+        pass = FAIL;
+        if (rst) {
+          state.d = state.IDLE;
+        }        
+    }  
   }
 }
