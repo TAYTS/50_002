@@ -24,37 +24,41 @@ module mojo_top (
   ) {
   
   sig rst;    // reset signal
-  
+
   .clk(clk) {
     // The reset conditioner is used to synchronize the reset signal to the FPGA
     // clock. This ensures the entire FPGA comes out of reset at the same time.
     reset_conditioner reset_cond;
     
-    pipeline raw_cout(#DEPTH(2));
-    pipeline raw_sum(#DEPTH(2));
-
-    edge_detector raise_a(#RISE(1), #FALL(1));
-    edge_detector raise_b(#RISE(1), #FALL(1));
-    edge_detector raise_c(#RISE(1), #FALL(1));
+    pipeline sync_cout(#DEPTH(4));
+    pipeline sync_sum(#DEPTH(4));       
     
     .rst(rst) {
       display_status seg;
       dff ctr[3];
+      dff delay_count[$clog2(50000000 * 20 / 1000)];
+      dff delay_sum[$clog2(50000000 * 20 / 1000)];
       dff mode[1];
-      //adder_fsm adder_fsm;
-    }
-    .rst(io_button[1]) {
-      adder_fsm adder_fsm; 
+      adder_fsm adder_fsm;
     }
   }
   test_cases test_cases;
   always {
-    raw_cout.in = raw_c;
-    raw_sum.in = raw_s;
     
-    raise_a.in = io_dip[0][0];
-    raise_b.in = io_dip[0][1];
-    raise_c.in = io_dip[0][2];
+    sync_cout.in = raw_c;
+    sync_sum.in = raw_s;
+    
+    if (!&delay_count.q)
+      delay_count.d = delay_count.q + 1;
+    
+    if (!&delay_sum.q)
+      delay_sum.d = delay_sum.q + 1;
+    
+    if (!sync_cout.out)
+      delay_count.d = 0;
+    
+    if (!sync_sum.out)
+      delay_sum.d = 0;
     
     //// Pre-set value for unused pin-out ////
     reset_cond.in = ~rst_n; // input raw inverted reset signal
@@ -102,7 +106,7 @@ module mojo_top (
     ///////////////////////////////////////////////////////
 
     //// Provide actual and raw data for adder_fsm checker ////
-    adder_fsm.raw = c{raw_cout.out, raw_sum.out};
+    adder_fsm.raw = c{raw_c, raw_s};
     if (mode.q) {
       adder_fsm.expect = test_cases.values[4:3];
     } else {
@@ -127,7 +131,7 @@ module mojo_top (
     //////////////////////////////////////////////
     
     //// Display out comparison (FAIL) ////
-    if (~adder_fsm.pass) {
+    if (adder_fsm.pass == 2b00) {
       // group 1 LED: inputs for the full bit adder
       io_led[0] = adder_fsm.input_ref;
       
@@ -136,6 +140,7 @@ module mojo_top (
       
       // group 3 LED: actual output
       io_led[2] = adder_fsm.err_ref;
+      led = adder_fsm.pass;
     }
     else {
       // if everthing pass, NO LED
@@ -144,19 +149,21 @@ module mojo_top (
     ///////////////////////////////////////
     
     if (adder_fsm.pass == 2b00) {
-      seg.status = adder_fsm.pass; 
+      seg.status = adder_fsm.pass;
+    } else if (adder_fsm.pass == 2b10) {
+      seg.status = adder_fsm.pass;
     } else {
       if (mode.q) {
-        if (ctr.q <= 7) {
-          ctr.d = ctr.q + 1;
+        if (io_button[1])
+          ctr.d = 3b0;
+        if (ctr.q < 7) {
+          ctr.d = ctr.q + 1b1;
           seg.status = 2b10;
         } else
           seg.status = adder_fsm.pass;
       } else {
         seg.status = adder_fsm.pass;  
       }
-        
-      
     }
     io_seg = ~seg.seg;
     io_sel = ~seg.sel;    

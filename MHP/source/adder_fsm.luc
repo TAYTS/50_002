@@ -11,22 +11,33 @@ module adder_fsm (
     output ans_ref[2],
     output err_ref[2]
   ) {
-  .clk(clk) {
+  .clk(clk) {        
     .rst(rst) {
-      fsm state = {IDLE, S, C, CS, FAIL};
+      fsm state = {IDLE, S, C, CS, FAIL, BUFFER};
+      dff delay[20];
+      dff status[2];
     }
   }
   
   checker checker;
-  const PASS = 2b01;
+  
   const FAIL = 2b00;
+  const PASS = 2b01;
+  const BUFFER = 2b10;
+  
+  const IDLE = 2b00;
+  const S = 2b01;
+  const C = 2b10;
+  const CS = 2b11;
 
   always {
     
     checker.expect = expect;
     checker.raw = raw;
     
-    input_ref = c{c, b, a};    
+    input_ref = c{c, b, a};
+        
+
     ans_ref = expect;
     err_ref = raw;
 
@@ -44,8 +55,10 @@ module adder_fsm (
           state.d = state.S;
         if ((a + b + c) == 0)
           // Check the Sum and Cout
-          if (~checker.pass)
-            state.d = state.FAIL;        
+          if (~(raw == expect))
+            state.d = IDLE;
+            state.d = state.BUFFER;
+            pass = BUFFER;       
 
       state.S:
         if (rst)
@@ -56,8 +69,10 @@ module adder_fsm (
           state.d = state.C;
         if ((a + b + c) == 1)
           // Check the Sum and Cout
-          if (~checker.pass)
-            state.d = state.FAIL;       
+          if (~(raw == expect))
+            status.d = S;
+            state.d = state.BUFFER; 
+            pass = BUFFER;      
         if ((a + b + c) == 0)
           state.d = state.IDLE;
         
@@ -68,8 +83,10 @@ module adder_fsm (
           state.d = state.CS;
         if ((a + b + c) == 2)
           // Check the Sum and Cout
-          if (~checker.pass)
-            state.d = state.FAIL;
+          if (~(raw == expect))
+            status.d = C;
+            state.d = state.BUFFER;
+            pass = BUFFER;
         if ((a + b + c) == 1)
           state.d = state.S;
         if ((a + b + c) == 0)
@@ -80,8 +97,10 @@ module adder_fsm (
           state.d = state.IDLE;
         if ((a + b + c) == 3)
           // Check the Sum and Cout
-          if (~checker.pass)
-            state.d = state.FAIL;
+          if (~(raw == expect))
+            status.d = CS;
+            state.d = state.BUFFER;
+            pass = BUFFER;
         if ((a + b + c) == 2)
           state.d = state.C;
         if ((a + b + c) == 1)
@@ -93,7 +112,25 @@ module adder_fsm (
         pass = FAIL;
         if (rst) {
           state.d = state.IDLE;
-        }        
+        }
+      
+      state.BUFFER:
+        if (delay.q < 1048576)
+          delay.d = delay.q + 1;
+        if (delay.q == 1048576)
+          delay.d = 0;
+          if (~(raw == expect))
+            state.d = state.FAIL;
+          else {
+            pass = PASS;
+            case(status.q) {
+              2b00: state.d = state.IDLE;
+              2b01: state.d = state.S;
+              2b10: state.d = state.C;
+              2b11: state.d = state.CS;
+              default: state.d = state.IDLE;
+            }
+          }
     }  
   }
 }

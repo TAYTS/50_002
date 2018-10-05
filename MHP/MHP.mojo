@@ -4,10 +4,10 @@
     <src>fail_str.luc</src>
     <src top="true">mojo_top.luc</src>
     <src>pass_str.luc</src>
+    <src>test_cases.luc</src>
     <src>adder_fsm.luc</src>
     <src>display_status.luc</src>
     <src>checker.luc</src>
-    <src>test_cases.luc</src>
     <ucf>custom.ucf</ucf>
     <ucf lib="true">mojo.ucf</ucf>
     <ucf lib="true">io_shield.ucf</ucf>
