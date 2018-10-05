@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="MHP" board="Mojo V3" language="Lucid">
   <files>
+    <src>manual_checker.luc</src>
     <src>fail_str.luc</src>
     <src top="true">mojo_top.luc</src>
     <src>pass_str.luc</src>

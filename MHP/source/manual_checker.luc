@@ -1,0 +1,15 @@
+module manual_checker (
+    input expect[2],
+    input raw[2],
+    output pass[2],
+    output ans_ref[2]
+  ) {
+
+  always {
+    ans_ref = expect;
+    if (raw == expect)
+      pass = 2b01;
+    else
+      pass = 2b00;
+  }
+}

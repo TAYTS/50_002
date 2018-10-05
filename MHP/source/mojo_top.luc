@@ -42,7 +42,10 @@ module mojo_top (
       adder_fsm adder_fsm;
     }
   }
+
   test_cases test_cases;
+  manual_checker manual_checker;
+
   always {
     
     sync_cout.in = raw_c;
@@ -99,48 +102,60 @@ module mojo_top (
       b = io_dip[0][1];
       c = io_dip[0][2];
       //// adder_fsm input ////
-      adder_fsm.a = io_dip[0][0];
-      adder_fsm.b = io_dip[0][1];
-      adder_fsm.c = io_dip[0][2];  
+      adder_fsm.a = 1b0;
+      adder_fsm.b = 1b0;
+      adder_fsm.c = 1b0;  
     }
     ///////////////////////////////////////////////////////
 
     //// Provide actual and raw data for adder_fsm checker ////
-    adder_fsm.raw = c{raw_c, raw_s};
+    
     if (mode.q) {
+      adder_fsm.raw = c{raw_c, raw_s};
       adder_fsm.expect = test_cases.values[4:3];
+      manual_checker.raw = 2b0;
+      manual_checker.expect = 2b0;
     } else {
+      adder_fsm.raw = 2b0;
+      adder_fsm.expect = 2b0;
+
+      manual_checker.raw = c{raw_c, raw_s};
       if ((io_dip[0][0] + io_dip[0][1] + io_dip[0][2]) == 3) {
-        adder_fsm.expect = 2b11;
-        io_led[1][7] = 1b1;
+        manual_checker.expect = 2b11;
       } else if ((io_dip[0][0] + io_dip[0][1] + io_dip[0][2]) == 2) {
-        adder_fsm.expect = 2b10;
-        io_led[1][6] = 1b1;
+        manual_checker.expect = 2b10;
       } else if ((io_dip[0][0] + io_dip[0][1] + io_dip[0][2]) == 1) {
-        adder_fsm.expect = 2b01;
-        io_led[1][5] = 1b1;
+        manual_checker.expect = 2b01;
       } else {
-        adder_fsm.expect = 2b00;
-        io_led[1][4] = 1b1;
+        manual_checker.expect = 2b00;
       }
     }
     //////////////////////////////////////////////////////////
 
-    //// Display the adder_fsm checker result ////
-    seg.status = adder_fsm.pass;
-    //////////////////////////////////////////////
     
     //// Display out comparison (FAIL) ////
-    if (adder_fsm.pass == 2b00) {
-      // group 1 LED: inputs for the full bit adder
-      io_led[0] = adder_fsm.input_ref;
+    if (adder_fsm.pass == 2b00 || manual_checker.pass == 2b00) {
+      if (mode.q) {
+        // group 1 LED: inputs for the full bit adder
+        io_led[0] = adder_fsm.input_ref;
       
-      // group 2 LED: expected output
-      io_led[1] = adder_fsm.ans_ref;
+        // group 2 LED: expected output
+        io_led[1] = adder_fsm.ans_ref;
       
-      // group 3 LED: actual output
-      io_led[2] = adder_fsm.err_ref;
-      led = adder_fsm.pass;
+        // group 3 LED: actual output
+        io_led[2] = adder_fsm.err_ref;
+        //led = adder_fsm.pass;
+      } else {
+        // group 1 LED: inputs for the full bit adder
+        io_led[0] = c{io_dip[0][2], io_dip[0][1], io_dip[0][0]};
+      
+        // group 2 LED: expected output
+        io_led[1] = manual_checker.ans_ref;
+      
+        // group 3 LED: actual output
+        io_led[2] = c{raw_c, raw_s};
+        //led = adder_fsm.pass;
+      }
     }
     else {
       // if everthing pass, NO LED
@@ -148,12 +163,12 @@ module mojo_top (
     }
     ///////////////////////////////////////
     
-    if (adder_fsm.pass == 2b00) {
-      seg.status = adder_fsm.pass;
-    } else if (adder_fsm.pass == 2b10) {
-      seg.status = adder_fsm.pass;
-    } else {
-      if (mode.q) {
+    if (mode.q) {
+      if (adder_fsm.pass == 2b00) {
+        seg.status = adder_fsm.pass;
+      } else if (adder_fsm.pass == 2b10) {
+        seg.status = adder_fsm.pass;
+      } else {
         if (io_button[1])
           ctr.d = 3b0;
         if (ctr.q < 7) {
@@ -161,10 +176,11 @@ module mojo_top (
           seg.status = 2b10;
         } else
           seg.status = adder_fsm.pass;
-      } else {
-        seg.status = adder_fsm.pass;  
       }
+    } else {
+      seg.status = manual_checker.pass; 
     }
+    
     io_seg = ~seg.seg;
     io_sel = ~seg.sel;    
   }
