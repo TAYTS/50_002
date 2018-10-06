@@ -1,3 +1,10 @@
+/*
+This is used for checking the raw and expected signal in manual mode.
+if equal
+  return 1
+else
+  return 0
+*/
 module manual_checker (
     input expect[2],
     input raw[2],

@@ -1,3 +1,6 @@
+/*
+Define the PASS string display segments
+*/
 module pass_str (
     input char[3],  // bit size for char selection
     output segs[7]  // bit size for the output

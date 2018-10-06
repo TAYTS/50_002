@@ -1,3 +1,9 @@
+/*
+This is used to display the status string based on the input signal
+   status: 1 => PASS
+   status: 0 => FAIL
+   invalid => Empty
+*/
 module display_status #(
     CHARS = 4 : CHARS > 0, // set the no. of characters
     DIV = 16 : DIV >= 0    // control the switching speed of characters
@@ -39,7 +45,9 @@ module display_status #(
         seg = 7b0;
     }
 
+    // Set the display segment
     digit_dec.in = ctr.value;
+    // Set the display unit
     sel = digit_dec.out;
   }
 }

@@ -15,58 +15,50 @@ module mojo_top (
     output io_seg [8],      // 7-segment LEDs on IO Shield
     output io_sel [4],      // Digit select on IO Shield
     input io_button [5],    // 5 buttons on IO Shield
-    input io_dip [3][8],     // DIP switches on IO Shield
-    output a,
-    output b,
-    output c,
-    input raw_s,
-    input raw_c
+    input io_dip [3][8],    // DIP switches on IO Shield
+    output a,               // Output signal A for full adder [P51]
+    output b,               // Output signal B for full adder [P41]
+    output c,               // Output signal C for full adder [P35]
+    input raw_s,            // Input signal Sum from full adder   [P33]
+    input raw_c             // Input signal Cout from full adder  [P30]
   ) {
   
   sig rst;    // reset signal
-
+  sig rst1;
   .clk(clk) {
     // The reset conditioner is used to synchronize the reset signal to the FPGA
     // clock. This ensures the entire FPGA comes out of reset at the same time.
     reset_conditioner reset_cond;
     
-    pipeline sync_cout(#DEPTH(4));
-    pipeline sync_sum(#DEPTH(4));       
-    
+    // Used to filter the center button signal
+    button_conditioner button_cond;
+
     .rst(rst) {
-      display_status seg;
-      dff ctr[3];
-      dff delay_count[$clog2(50000000 * 20 / 1000)];
-      dff delay_sum[$clog2(50000000 * 20 / 1000)];
-      dff mode[1];
+      display_status seg;      
+      dff mode[1];  // Define the testing mode 
+    }
+    
+    dff ctr[3];  // counter for test_cases index
+
+    // Use center button to reset FSM
+    .fsm_rst(rst1) {
       adder_fsm adder_fsm;
     }
-  }
+  }     
 
   test_cases test_cases;
   manual_checker manual_checker;
 
   always {
+    button_cond.in = io_button[1];  // filter the center button signal
     
-    sync_cout.in = raw_c;
-    sync_sum.in = raw_s;
+    //// Filter the reset button ////
+    reset_cond.in = ~rst_n;  // input raw inverted reset signal
+    rst = reset_cond.out;    // conditioned reset
     
-    if (!&delay_count.q)
-      delay_count.d = delay_count.q + 1;
-    
-    if (!&delay_sum.q)
-      delay_sum.d = delay_sum.q + 1;
-    
-    if (!sync_cout.out)
-      delay_count.d = 0;
-    
-    if (!sync_sum.out)
-      delay_sum.d = 0;
+    rst1 = button_cond.out;  // manual reset signal
     
     //// Pre-set value for unused pin-out ////
-    reset_cond.in = ~rst_n; // input raw inverted reset signal
-    rst = reset_cond.out;   // conditioned reset
-    
     led = 8h00;             // turn LEDs off
     spi_miso = bz;          // not using SPI
     spi_channel = bzzzz;    // not using flags
@@ -109,33 +101,37 @@ module mojo_top (
     ///////////////////////////////////////////////////////
 
     //// Provide actual and raw data for adder_fsm checker ////
-    
     if (mode.q) {
+      // Set the raw and expect for FSM
       adder_fsm.raw = c{raw_c, raw_s};
       adder_fsm.expect = test_cases.values[4:3];
+      // Set 0 for manual_check
       manual_checker.raw = 2b0;
       manual_checker.expect = 2b0;
     } else {
+      // Set 0 for FSM
       adder_fsm.raw = 2b0;
       adder_fsm.expect = 2b0;
 
+      // Set the raw and expect vlue for manual_checker
       manual_checker.raw = c{raw_c, raw_s};
       if ((io_dip[0][0] + io_dip[0][1] + io_dip[0][2]) == 3) {
-        manual_checker.expect = 2b11;
+        manual_checker.expect = 2b11;  // State: CS
       } else if ((io_dip[0][0] + io_dip[0][1] + io_dip[0][2]) == 2) {
-        manual_checker.expect = 2b10;
+        manual_checker.expect = 2b10;  // State: C
       } else if ((io_dip[0][0] + io_dip[0][1] + io_dip[0][2]) == 1) {
-        manual_checker.expect = 2b01;
+        manual_checker.expect = 2b01;  // State: S
       } else {
-        manual_checker.expect = 2b00;
+        manual_checker.expect = 2b00;  // State: IDLE
       }
     }
     //////////////////////////////////////////////////////////
 
     
     //// Display out comparison (FAIL) ////
-    if (adder_fsm.pass == 2b00 || manual_checker.pass == 2b00) {
-      if (mode.q) {
+    if (mode.q) {
+      //led[1:0] = adder_fsm.pass;
+      if (adder_fsm.pass == 2b00) {
         // group 1 LED: inputs for the full bit adder
         io_led[0] = adder_fsm.input_ref;
       
@@ -144,8 +140,12 @@ module mojo_top (
       
         // group 3 LED: actual output
         io_led[2] = adder_fsm.err_ref;
-        //led = adder_fsm.pass;
       } else {
+        // if everthing pass, NO LED
+        io_led = 3x{{8h00}};
+      }
+    } else {
+      if (manual_checker.pass == 2b00) {
         // group 1 LED: inputs for the full bit adder
         io_led[0] = c{io_dip[0][2], io_dip[0][1], io_dip[0][0]};
       
@@ -154,33 +154,38 @@ module mojo_top (
       
         // group 3 LED: actual output
         io_led[2] = c{raw_c, raw_s};
-        //led = adder_fsm.pass;
+      } else {
+        // if everthing pass, NO LED
+        io_led = 3x{{8h00}};
       }
-    }
-    else {
-      // if everthing pass, NO LED
-      io_led = 3x{{8h00}};
     }
     ///////////////////////////////////////
     
+    
+    //// Manual reset the test cases counter ////
+    if (rst1) {
+        ctr.d = 3b000;
+    }
+    ////////////////////////////////////////////
+
+    // Auto mode
     if (mode.q) {
-      if (adder_fsm.pass == 2b00) {
+        // Uncommet to show the test_cases index
+        //led[7:5] = ctr.q;
+        // Display the test cases status
         seg.status = adder_fsm.pass;
-      } else if (adder_fsm.pass == 2b10) {
-        seg.status = adder_fsm.pass;
-      } else {
-        if (io_button[1])
-          ctr.d = 3b0;
-        if (ctr.q < 7) {
-          ctr.d = ctr.q + 1b1;
-          seg.status = 2b10;
-        } else
-          seg.status = adder_fsm.pass;
-      }
+        //// if the test case is PASS, go to next one
+        if (adder_fsm.pass == 2b01) {
+          if (ctr.q < 7) {        
+            ctr.d = ctr.q + 1b1;
+          }      
+        }
     } else {
+    // Manual mode: Use manual checker
       seg.status = manual_checker.pass; 
     }
     
+    // Display the checking status
     io_seg = ~seg.seg;
     io_sel = ~seg.sel;    
   }

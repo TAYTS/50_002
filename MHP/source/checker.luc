@@ -1,7 +1,15 @@
+/*
+This is used to compare the expected and raw signal
+if equal
+  return 1
+else
+  return 0
+*/
+
 module checker (
     input expect[2],  // expected value
     input raw[2],     // actual value
-    output pass[1]
+    output pass[1]    // 1 if equal else 0
   ) {
 
   always {

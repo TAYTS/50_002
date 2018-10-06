@@ -1,6 +1,9 @@
+/*
+Define the test cases for auto testing.
+*/
 module test_cases (
     input idx[3],      // index of test cases
-    output values[5]   // test case array [A, B]
+    output values[5]   // test case array [COUT, SUM, C, B, A]
   ) {
   
   always {
