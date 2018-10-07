@@ -3,13 +3,12 @@ module adder_fsm (
     input a[1],            // input A for full adder
     input b[1],            // input B for full adder
     input c[1],            // Input C for full adder
-    input expect[2],       // Expected output from full adder used for checking
     input raw[2],          // Actual output from full adder
     input fsm_rst,         // For manual reset the FSM
     output pass[2],        // result of FSM: 2 for BUFFER, 1 for PASS, 0 for FAIL
     output input_ref[3],   // Input received by full adder
-    output ans_ref[2],     // Expected output from full adder
-    output err_ref[2]      // Error output of full adder  
+    output err_ref[2],     // Error output of full adder
+    output verify[2]       // Ouput the current state[IDLE, S, C, CS]
   ) {
   
   
@@ -37,17 +36,30 @@ module adder_fsm (
     // Reset to default value
     if (fsm_rst) {
       pass = BUFFER;
-      status.d = 0;
+      status.d = IDLE;
+      state.d = state.IDLE;
     }
+    
+    // For display the current state
+    verify = status.q;
+
+    status.d = status.q;
 
     // Pass the expect and raw to checker module
-    checker.expect = expect;
+    if ((a + b + c) == 3)
+      checker.expect = CS;
+    else if ((a + b + c) == 2)
+      checker.expect = C;
+    else if ((a + b + c) == 1)
+      checker.expect = S;
+    else
+      checker.expect = IDLE;
     checker.raw = raw;
     
     // Set the output signal
     input_ref = c{c, b, a};
-    ans_ref = expect;
     err_ref = raw;
+
 
     // Set the default pass status
     pass = BUFFER;
@@ -55,15 +67,13 @@ module adder_fsm (
     case (state.q) {
       state.IDLE:
         status.d = IDLE;
-        if (fsm_rst)
-          state.d = state.IDLE;
         if ((a + b + c) == 3)
           state.d = state.CS;
-        if ((a + b + c) == 2)
+        else if ((a + b + c) == 2)
           state.d = state.C;
-        if ((a + b + c) == 1)
+        else if ((a + b + c) == 1)
           state.d = state.S;
-        if ((a + b + c) == 0)
+        else
           // Check the Sum and Cout  
           if (~checker.pass)          
             state.d = state.BUFFER;
@@ -72,53 +82,47 @@ module adder_fsm (
 
       state.S:
         status.d = S;
-        if (fsm_rst)
-          state.d = state.IDLE;
         if ((a + b + c) == 3)
           state.d = state.CS;
-        if ((a + b + c) == 2)
+        else if ((a + b + c) == 2)
           state.d = state.C;
-        if ((a + b + c) == 1)
+        else if ((a + b + c) == 1)
           // Check the Sum and Cout
           if (~checker.pass)
             state.d = state.BUFFER;
           else
             pass = PASS;     
-        if ((a + b + c) == 0)
+        else
           state.d = state.IDLE;
         
       state.C:
-        status.d = 2b10;
-        if (fsm_rst)
-          state.d = state.IDLE;
+        status.d = C;
         if ((a + b + c) == 3)
           state.d = state.CS;
-        if ((a + b + c) == 2)
+        else if ((a + b + c) == 2)
           // Check the Sum and Cout
           if (~checker.pass)
             state.d = state.BUFFER;
           else
             pass = PASS;
-        if ((a + b + c) == 1)
+        else if ((a + b + c) == 1)
           state.d = state.S;
-        if ((a + b + c) == 0)
+        else
           state.d = state.IDLE;
         
       state.CS:
-        status.d = 2b11;
-        if (fsm_rst)
-          state.d = state.IDLE;
+        status.d = CS;
         if ((a + b + c) == 3)
           // Check the Sum and Cout
           if (~checker.pass)
             state.d = state.BUFFER;
           else
             pass = PASS;
-        if ((a + b + c) == 2)
+        else if ((a + b + c) == 2)
           state.d = state.C;
-        if ((a + b + c) == 1)
+        else if ((a + b + c) == 1)
           state.d = state.S;
-        if ((a + b + c) == 0)
+        else
           state.d = state.IDLE;
 
       state.FAIL:
@@ -131,7 +135,7 @@ module adder_fsm (
         // Delay by 15 cycle
         if (ctr.q[27:24] == 15) {
           ctr.d = 0;
-          if (raw == expect) {
+          if (checker.pass) {
             pass = PASS;
             case(status.q) {
               IDLE:
@@ -141,12 +145,13 @@ module adder_fsm (
               C:
                 state.d = state.C;
               CS:
-                state.d = state.IDLE;
+                state.d = state.CS;
             }
           } else {
             state.d = state.FAIL;
           }
         }
+      
     }  
   }
 }
