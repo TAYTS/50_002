@@ -51,7 +51,7 @@ module mojo_top (
 
   always {
     button_cond.in = io_button[1];  // filter the center button signal
-    
+
     //// Filter the reset button ////
     reset_cond.in = ~rst_n;  // input raw inverted reset signal
     rst = reset_cond.out;    // conditioned reset
@@ -102,16 +102,15 @@ module mojo_top (
 
     //// Provide actual and raw data for adder_fsm checker ////
     if (mode.q) {
-      // Set the raw and expect for FSM
+      // Set the raw for FSM
       adder_fsm.raw = c{raw_c, raw_s};
-      adder_fsm.expect = test_cases.values[4:3];
       // Set 0 for manual_check
       manual_checker.raw = 2b0;
       manual_checker.expect = 2b0;
     } else {
       // Set 0 for FSM
       adder_fsm.raw = 2b0;
-      adder_fsm.expect = 2b0;
+      //adder_fsm.expect = 2b0;
 
       // Set the raw and expect vlue for manual_checker
       manual_checker.raw = c{raw_c, raw_s};
@@ -130,13 +129,13 @@ module mojo_top (
     
     //// Display out comparison (FAIL) ////
     if (mode.q) {
-      //led[1:0] = adder_fsm.pass;
+      led[1:0] = adder_fsm.pass;
       if (adder_fsm.pass == 2b00) {
         // group 1 LED: inputs for the full bit adder
         io_led[0] = adder_fsm.input_ref;
       
         // group 2 LED: expected output
-        io_led[1] = adder_fsm.ans_ref;
+        io_led[1] = test_cases.values[4:3];
       
         // group 3 LED: actual output
         io_led[2] = adder_fsm.err_ref;
@@ -170,15 +169,19 @@ module mojo_top (
 
     // Auto mode
     if (mode.q) {
-        // Uncommet to show the test_cases index
-        //led[7:5] = ctr.q;
+        led[7:5] = ctr.q;
+        led[4:3] = adder_fsm.verify;
         // Display the test cases status
         seg.status = adder_fsm.pass;
-        //// if the test case is PASS, go to next one
-        if (adder_fsm.pass == 2b01) {
-          if (ctr.q < 7) {        
-            ctr.d = ctr.q + 1b1;
-          }      
+        //// if the test case is PASS, go to next counter
+        if (~rst1) {
+          if (adder_fsm.pass == 2b01) {
+            if (ctr.q < 7) {      
+                ctr.d = ctr.q + 1;
+            }    
+          } else {
+            ctr.d = ctr.q;
+          }
         }
     } else {
     // Manual mode: Use manual checker
