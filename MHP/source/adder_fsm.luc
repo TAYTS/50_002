@@ -38,6 +38,7 @@ module adder_fsm (
       pass = BUFFER;
       status.d = IDLE;
       state.d = state.IDLE;
+      ctr.d = 0;
     }
     
     // For display the current state
@@ -132,8 +133,8 @@ module adder_fsm (
       state.BUFFER:
         pass = BUFFER;
         ctr.d = ctr.q + 1;
-        // Delay by 15 cycle
-        if (ctr.q[27:24] == 15) {
+        // Delay by 7 cycle
+        if (ctr.q[26:23] == 7) {
           ctr.d = 0;
           if (checker.pass) {
             pass = PASS;
