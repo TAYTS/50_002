@@ -15,19 +15,32 @@ module mojo_top (
     output io_seg [8],      // 7-segment LEDs on IO Shield
     output io_sel [4],      // Digit select on IO Shield
     input io_button [5],    // 5 buttons on IO Shield
-    input io_dip [3][8],    // DIP switches on IO Shield
-    input a[16],            // Input A container    
-    input b[16],            // Input B container
-    input alufn[6],         // Input ALUFN container
-    output out[16]          // Output container
+    input io_dip [3][8]     // DIP switches on IO Shield
   ) {
   
   sig rst;                  // reset signal
+  sig confirm;              // confirm button signal
+  sig prev;                 // previous container signal
+  sig next;                 // next container signal
+  
+  alu16 alu;                // Initialise the 16bit ALU submodule
   
   .clk(clk) {
     // The reset conditioner is used to synchronize the reset signal to the FPGA
     // clock. This ensures the entire FPGA comes out of reset at the same time.
     reset_conditioner reset_cond;
+    button_conditioner confirm_btn;
+    button_conditioner prev_btn;
+    button_conditioner next_btn;
+    
+    .rst(rst) {
+      display_container display;
+      dff idx[2];
+      dff container_a[16];
+      dff container_b[16];
+      dff container_alu[6];
+      dff container_output[19];
+    }
   }
   
   always {
@@ -44,10 +57,66 @@ module mojo_top (
     io_sel = 4hf;           // select no digits
     
     
+    // Connect the ALU input and output//
+    alu.a = container_a.q;
+    alu.b = container_b.q;
+    alu.alufn = container_alu.q;
+    container_output.d = c{alu.z, alu.v, alu.n, alu.out};
+    //////////////////////////
     
     
-    // Display the current container //
+    // Define IO button  function //
+    // Center button for confirm
+    confirm_btn.in = io_button[1];
+    confirm = confirm_btn.out;
+    // Left button to go back previous container
+    prev_btn.in = io_button[3];
+    prev = prev_btn.out;
+    if (prev && idx.q > 0)
+      idx.d = idx.q - 1b1;
+    // Right button to go next container
+    next_btn.in = io_button[4];
+    next = next_btn.out;
+    if (next && idx.q < 3)
+      idx.d = idx.q + 1b1;
+    ////////////////////////////////
     
-    ///////////////////////////////////
+    // Display the current container name //
+    display.option = idx.q;
+    io_seg = ~display.seg;
+    io_sel = ~display.sel;
+    ////////////////////////////////////////
+    
+    // Update and display the current container value //
+    if (confirm) { // Update the container value
+      case(idx.q) {
+        2b00:
+          container_a.d = c{io_dip[1], io_dip[0]};
+        2b01:
+          container_b.d = c{io_dip[1], io_dip[0]};
+        2b10:
+          container_alu.d = c{io_dip[1], io_dip[0]};
+      }
+    }
+    else {  // Display the container value as LED
+      case(idx.q) {
+        2b00:
+          io_led[0] = container_a.q[7:0];
+          io_led[1] = container_a.q[15:8];
+        2b01:
+          io_led[0] = container_b.q[7:0];
+          io_led[1] = container_b.q[15:8];
+        2b10:
+          io_led[0] = container_alu.q[5:0];
+      }
+    }
+    
+    // Display the Output container value
+    if (idx.q == 2b11) {
+      io_led[0] = container_output.q[7:0];   // 0-8th bit output
+      io_led[1] = container_output.q[15:8];  // 9-15th bit output
+      io_led[2] = container_output.q[18:16]; // z, v, n
+    }
+    //////////////////////////////////////////////////
   }
 }
