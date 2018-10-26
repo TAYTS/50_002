@@ -1,0 +1,78 @@
+module alu16 (
+    input a[16],
+    input b[16],
+    input alufn[6],
+    output out[16],
+    output z[1],
+    output v[1],
+    output n[1]
+  ) {
+
+  // Initialise all the submodules //
+  // ADD/SUB
+  
+  // BOOL
+  
+  // SHIFT
+  shifter shifter;
+  
+  // CMP
+  
+  ///////////////////////////////
+  
+  always {
+    
+    // Connect the input for all the submodules //
+    // ADD/SUB
+    
+    // BOOL
+    
+    // SHIFT
+    shifter.a = a;
+    shifter.b = b[3:0];
+    shifter.alufn = alufn[1:0];
+    
+    // CMP
+    //////////////////////////////////////////////
+    
+    // Define the default output for z, v, n
+    z = 1b0;
+    v = 1b0;
+    n = 1b0;
+    
+    
+    // Connect the output with the respective submodules based on the ALUFN //
+    case(alufn) {
+      6b000000:  // ADD
+        out = 16b1;
+        z = 1b1;
+        v = 1b1;
+        n = 1b1;
+      6b000001:  // SUB
+        out = 16b1;
+      6b011000:  // AND
+        out = 16b1;        
+      6b011110:  // OR
+        out = 16b1;
+      6b010110:  // XOR
+        out = 16b1;
+      6b011010:  // "A" (LDR)
+        out = 16b1;
+      6b100000:  // SHL
+        out = shifter.out;
+      6b100001:  // SHR
+        out = shifter.out;
+      6b100011:  // SRA
+        out = shifter.out;
+      6b110011:  // CMPEQ
+        out = 16b1;
+      6b110101:  // CMPLT
+        out = 16b1;
+      6b110111:  // CMPLE
+        out = 16b1;
+      default:
+        out = 16b0;
+      
+    }
+  }
+}
