@@ -5,7 +5,7 @@
    option: 2 => Container ALUFN
    option: 3 => Contaier Output
 */
-module display_status #(
+module display_container #(
     CHARS = 3 : CHARS > 0, // set the no. of characters
     DIV = 16 : DIV >= 0    // control the switching speed of characters
   )(
