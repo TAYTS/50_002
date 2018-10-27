@@ -1,4 +1,4 @@
-module alu (
+module alu16 (
     input a[16],
     input b[16],
     input alufn[6],
