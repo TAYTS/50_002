@@ -1,4 +1,4 @@
-module alu16 (
+module alu (
     input a[16],
     input b[16],
     input alufn[6],
@@ -9,23 +9,33 @@ module alu16 (
   ) {
 
   // Initialise all the submodules //
+  //to REPLACE submod names with actual names !!!
   // ADD/SUB
+  adder addmod;
   
   // BOOL
+  boolean boole;
   
   // SHIFT
   shifter shifter;
   
   // CMP
+  compare comp;
   
-  ///////////////////////////////
-  
+ 
   always {
     
     // Connect the input for all the submodules //
     // ADD/SUB
     
+    addmod.a = a;
+    addmod.b = b;
+    addmod.alufn = alufn[0];
+    
     // BOOL
+    boole.a = a;
+    boole.b = b;
+    boole.alufn = alufn[3:0]
     
     // SHIFT
     shifter.a = a;
@@ -33,9 +43,13 @@ module alu16 (
     shifter.alufn = alufn[1:0];
     
     // CMP
-    //////////////////////////////////////////////
+    comp.alufn = alufn[2:1];
     
-    // Define the default output for z, v, n
+    comp.z = addmod.z
+    comp.v = addmod.v
+    comp.n = addmod.n
+    
+    // Define the default output for z, v, n //should this part go below? to the output defult?
     z = 1b0;
     v = 1b0;
     n = 1b0;
@@ -44,32 +58,35 @@ module alu16 (
     // Connect the output with the respective submodules based on the ALUFN //
     case(alufn) {
       6b000000:  // ADD
-        out = 16b1;
-        z = 1b1;
-        v = 1b1;
-        n = 1b1;
+        out = addmod.out ; 
+        z = addmod.z;
+        v = addmod.v;
+        n = addmod.n;
       6b000001:  // SUB
-        out = 16b1;
-      6b011000:  // AND
-        out = 16b1;        
-      6b011110:  // OR
-        out = 16b1;
-      6b010110:  // XOR
-        out = 16b1;
-      6b011010:  // "A" (LDR)
-        out = 16b1;
+        out = addmod.out ; 
+        z = addmod.z;
+        v = addmod.v;
+        n = addmod.n;
+      6b011000:  // AND (boolean)
+        out = boole.out;        
+      6b011110:  // OR (boolean)
+        out = boole.out;
+      6b010110:  // XOR (boolean)
+        out = boole.out;
+      6b011010:  // "A" (LDR) (boolean)
+        out = a;
       6b100000:  // SHL
         out = shifter.out;
       6b100001:  // SHR
         out = shifter.out;
       6b100011:  // SRA
         out = shifter.out;
-      6b110011:  // CMPEQ
-        out = 16b1;
-      6b110101:  // CMPLT
-        out = 16b1;
-      6b110111:  // CMPLE
-        out = 16b1;
+      6b110011:  // CMPEQ comp
+        out = comp.out;
+      6b110101:  // CMPLT comp
+        out = comp.out;
+      6b110111:  // CMPLE comp
+        out = comp.out;
       default:
         out = 16b0;
       
