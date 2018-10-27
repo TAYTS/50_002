@@ -49,7 +49,7 @@ module alu16 (
     comp.v = addmod.v
     comp.n = addmod.n
     
-    // Define the default output for z, v, n //should this part go below? to the output defult?
+    // Define the default output for z, v, n
     z = 1b0;
     v = 1b0;
     n = 1b0;
