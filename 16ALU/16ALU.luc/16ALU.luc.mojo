@@ -5,6 +5,10 @@
     <src>alu16.luc</src>
     <src>display_container.luc</src>
     <src>shifter.luc</src>
+    <src>single_adder.luc</src>
+    <src>addmod.luc</src>
+    <src>boolean.luc</src>
+    <src>compare.luc</src>
     <ucf lib="true">mojo.ucf</ucf>
     <ucf lib="true">io_shield.ucf</ucf>
     <component>pipeline.luc</component>
