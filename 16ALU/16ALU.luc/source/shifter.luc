@@ -1,3 +1,7 @@
+/*
+ * Shift the input A(Shift Left, Shift Right, Shift Right Arithmetic).
+ * Amount of bit shifting determine by signal B.
+ */
 module shifter (
     input a[16],        // Input signal A
     input b[4],         // Input signal B - determine the amount of bits need to shift
