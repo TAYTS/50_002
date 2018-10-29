@@ -120,5 +120,9 @@ module mojo_top (
       io_led[2] = container_output.q[18:16]; // z, v, n
     }
     //////////////////////////////////////////////////
+    
+    // Display the invalid ALUFN flag //
+    io_led[2][7] = alu.invalid;
+    ////////////////////////////////////
   }
 }
