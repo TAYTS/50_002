@@ -9,9 +9,8 @@ module alu16 (
   ) {
 
   // Initialise all the submodules //
-  //to REPLACE submod names with actual names !!!
   // ADD/SUB
-  adder addmod;
+  addmod addmod;
   
   // BOOL
   boolean boole;
@@ -45,9 +44,9 @@ module alu16 (
     // CMP
     comp.alufn = alufn[2:1];
     
-    comp.z = addmod.z
-    comp.v = addmod.v
-    comp.n = addmod.n
+    comp.z = addmod.z;
+    comp.v = addmod.v;
+    comp.n = addmod.n;
     
     // Define the default output for z, v, n
     z = 1b0;
@@ -89,7 +88,6 @@ module alu16 (
         out = comp.out;
       default:
         out = 16b0;
-      
     }
   }
 }
