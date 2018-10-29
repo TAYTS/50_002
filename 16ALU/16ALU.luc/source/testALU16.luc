@@ -1,3 +1,11 @@
+/*
+   todo:
+   - does code make sense?
+   - case for two negative numbers giving a positive number
+   - how to indicate PASS/FAIL
+*/
+
+
 module testALU16 (
     input clk,  // clock
     input rst,  // reset
@@ -13,6 +21,7 @@ module testALU16 (
   
   always {
     counter.d = counter.q + 1;
+    
     //Tests
     case(state.q){
       state.START:
@@ -40,7 +49,7 @@ module testALU16 (
         alu.a = 16b0111111111111111;
         alu.b = 16b0111111111111111;
         if (alu.v == 1){ //overflow occured because positive numbers gave negative output
-          //something to display overflow? 
+          //show pass
           state.d = state.SUB;
           }
         else{state.d = state.FAIL;}
@@ -89,7 +98,7 @@ module testALU16 (
         }
         else{state.d = state.FAIL;}
           
-      /*Output will be ‘high’ if every ith digit of either a and b is 1 */  
+      /*output will be ‘high’ if every ith digit of either a and b is 1 */  
       state.OR:
         alu.alufn = 6b011110;
         alu.a = 16b101;
@@ -118,7 +127,7 @@ module testALU16 (
           state.d = state.SHL;}
         else{state.d = state.FAIL;}
       
-      /*Shifting: 
+      /*shifting: 
         a is the number we are shifting. 
         b is the number of bits we are shifting left/right by.*/
            
