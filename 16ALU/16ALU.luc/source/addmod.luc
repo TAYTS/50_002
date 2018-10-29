@@ -1,13 +1,17 @@
+/*
+ * Calculate 16 bits addition/subtraction using ripple carry method.
+ */
 module addmod (
-    input a[16],        // Input signal A
+    input a[16],         // Input signal A
     input b[16],         // Input signal B 
-    input alufn,     // ALUFN
+    input alufn[1],      // ALUFN
     output out[16],      // output
-    output z,
-    output v,
-    output n
+    output z[1],         // Flag for showing all output is 0
+    output v[1],         // Flag for operation overflow(addition)
+    output n[1]          // Flag for showing the output is negative
   ) {
   
+  // Initialise all the submodules //
   single_adder fa1;
   single_adder fa2;
   single_adder fa3;
@@ -24,86 +28,90 @@ module addmod (
   single_adder fa14;
   single_adder fa15;
   single_adder fa16;
+  
+  // Define signal for the XOR B signal with ALUFN[0] //
   sig xb[16];
   
   always {
-  if(alufn==1){
-      xb=!b;
+    // Flip the B if the ALUFN[0] == 1 //
+    // B xor ALUFN[0]
+    if(alufn[0] == 1){
+      xb = ~b;
       fa1.cin = 1;
     }
     else{
-      xb=b;
+      xb = b;
       fa1.cin = 0;
     }
   
-    fa1.a=a[0];
-    fa1.b=xb[0];
-    fa2.a=a[1];
-    fa2.b=xb[1];
-    fa3.a=a[2];
-    fa3.b=xb[2];
-    fa4.a=a[3];
-    fa4.b=xb[3];
-    fa5.a=a[4];
-    fa5.b=xb[4];
-    fa6.a=a[5];
-    fa6.b=xb[5];
-    fa7.a=a[6];
-    fa7.b=xb[6];
-    fa8.a=a[7];
-    fa8.b=xb[7];
-    fa9.a=a[8];
-    fa9.b=xb[8];
-    fa10.a=a[9];
-    fa10.b=xb[9];
-    fa11.a=a[10];
-    fa11.b=xb[10];
-    fa12.a=a[11];
-    fa12.b=xb[11];
-    fa13.a=a[12];
-    fa13.b=xb[12];
-    fa14.a=a[13];
-    fa14.b=xb[13];
-    fa15.a=a[14];
-    fa15.b=xb[14];
-    fa16.a=a[15];
-    fa16.b=xb[15];
+    fa1.a = a[0];
+    fa1.b = xb[0];
+    fa2.a = a[1];
+    fa2.b = xb[1];
+    fa3.a = a[2];
+    fa3.b = xb[2];
+    fa4.a = a[3];
+    fa4.b = xb[3];
+    fa5.a = a[4];
+    fa5.b = xb[4];
+    fa6.a = a[5];
+    fa6.b = xb[5];
+    fa7.a = a[6];
+    fa7.b = xb[6];
+    fa8.a = a[7];
+    fa8.b = xb[7];
+    fa9.a = a[8];
+    fa9.b = xb[8];
+    fa10.a = a[9];
+    fa10.b = xb[9];
+    fa11.a = a[10];
+    fa11.b = xb[10];
+    fa12.a = a[11];
+    fa12.b = xb[11];
+    fa13.a = a[12];
+    fa13.b = xb[12];
+    fa14.a = a[13];
+    fa14.b = xb[13];
+    fa15.a = a[14];
+    fa15.b = xb[14];
+    fa16.a = a[15];
+    fa16.b = xb[15];
     
-    fa2.cin=fa1.cout;
-    fa3.cin=fa2.cout;
-    fa4.cin=fa3.cout;
-    fa5.cin=fa4.cout;
-    fa6.cin=fa5.cout;
-    fa7.cin=fa6.cout;
-    fa8.cin=fa7.cout;
-    fa9.cin=fa8.cout;
-    fa10.cin=fa9.cout;
-    fa11.cin=fa10.cout;
-    fa12.cin=fa11.cout;
-    fa13.cin=fa12.cout;
-    fa14.cin=fa13.cout;
-    fa15.cin=fa14.cout;
-    fa16.cin=fa15.cout;
-    
-    out[0]=fa1.sum;
-    out[1]=fa2.sum;
-    out[2]=fa3.sum;
-    out[3]=fa4.sum;
-    out[4]=fa5.sum;
-    out[5]=fa6.sum;
-    out[6]=fa7.sum;
-    out[7]=fa8.sum;
-    out[8]=fa9.sum;
-    out[9]=fa10.sum;
-    out[10]=fa11.sum;
-    out[11]=fa12.sum;
-    out[12]=fa13.sum;
-    out[13]=fa14.sum;
-    out[14]=fa15.sum;
-    out[15]=fa16.sum;
-    
-    z=!(fa1.sum||fa2.sum||fa3.sum||fa4.sum||fa5.sum||fa6.sum||fa7.sum||fa8.sum||fa9.sum||fa10.sum||fa11.sum||fa12.sum||fa13.sum||fa14.sum||fa15.sum||fa16.sum);
-    v=(a[15]&&xb[15]&&!fa16.sum)||(!a[15]&&!xb[15]&&fa16.sum);
-    n=!fa16.sum;
+    fa2.cin = fa1.cout;
+    fa3.cin = fa2.cout;
+    fa4.cin = fa3.cout;
+    fa5.cin = fa4.cout;
+    fa6.cin = fa5.cout;
+    fa7.cin = fa6.cout;
+    fa8.cin = fa7.cout;
+    fa9.cin = fa8.cout;
+    fa10.cin = fa9.cout;
+    fa11.cin = fa10.cout;
+    fa12.cin = fa11.cout;
+    fa13.cin = fa12.cout;
+    fa14.cin = fa13.cout;
+    fa15.cin = fa14.cout;
+    fa16.cin = fa15.cout;
+ 
+    out[0] = fa1.sum;
+    out[1] = fa2.sum;
+    out[2] = fa3.sum;
+    out[3] = fa4.sum;
+    out[4] = fa5.sum;
+    out[5] = fa6.sum;
+    out[6] = fa7.sum;
+    out[7] = fa8.sum;
+    out[8] = fa9.sum;
+    out[9] = fa10.sum;
+    out[10] = fa11.sum;
+    out[11] = fa12.sum;
+    out[12] = fa13.sum;
+    out[13] = fa14.sum;
+    out[14] = fa15.sum;
+    out[15] = fa16.sum;
+
+    z = ~(fa1.sum | fa2.sum | fa3.sum | fa4.sum | fa5.sum | fa6.sum | fa7.sum | fa8.sum | fa9.sum | fa10.sum | fa11.sum | fa12.sum | fa13.sum | fa14.sum | fa15.sum | fa16.sum);
+    v = (a[15] & xb[15] & ~fa16.sum) | (~a[15] & ~xb[15] & fa16.sum);
+    n = fa16.sum;
   }    
 }
