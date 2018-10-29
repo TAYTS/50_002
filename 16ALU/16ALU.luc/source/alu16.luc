@@ -21,6 +21,8 @@ module alu16 (
   // CMP
   compare comp;
   
+  // MULT
+  multiply mul;
  
   always {
     
@@ -43,10 +45,14 @@ module alu16 (
     
     // CMP
     comp.alufn = alufn[2:1];
-    
     comp.z = addmod.z;
     comp.v = addmod.v;
     comp.n = addmod.n;
+    
+    // MULT
+    mul.a = a;
+    mul.b = b;
+    
     
     // Define the default output for z, v, n
     z = 1b0;
@@ -66,6 +72,8 @@ module alu16 (
         z = addmod.z;
         v = addmod.v;
         n = addmod.n;
+      6b000010:  // MUL
+        out = mul.out;
       6b011000:  // AND (boolean)
         out = boole.out;        
       6b011110:  // OR (boolean)
