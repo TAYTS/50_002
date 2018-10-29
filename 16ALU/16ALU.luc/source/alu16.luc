@@ -1,11 +1,11 @@
 module alu16 (
-    input a[16],
-    input b[16],
-    input alufn[6],
-    output out[16],
-    output z[1],
-    output v[1],
-    output n[1]
+    input a[16],      // Input signal A
+    input b[16],      // Input signal B
+    input alufn[6],   // Input signal for ALUFN
+    output out[16],   // Output signal of the ALU
+    output z[1],      // Output signal z(adder) - Output all 0
+    output v[1],      // Output signal v(adder) - Output overflow
+    output n[1]       // Output signal n(adder) - Negative output
   ) {
 
   // Initialise all the submodules //
@@ -52,8 +52,8 @@ module alu16 (
     z = 1b0;
     v = 1b0;
     n = 1b0;
-    
-    
+
+
     // Connect the output with the respective submodules based on the ALUFN //
     case(alufn) {
       6b000000:  // ADD
@@ -73,7 +73,7 @@ module alu16 (
       6b010110:  // XOR (boolean)
         out = boole.out;
       6b011010:  // "A" (LDR) (boolean)
-        out = a;
+        out = boole.out;
       6b100000:  // SHL
         out = shifter.out;
       6b100001:  // SHR
