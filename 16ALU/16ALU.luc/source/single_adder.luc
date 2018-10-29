@@ -1,0 +1,13 @@
+module single_adder (
+    input a,
+    input b,
+    input cin,
+    output sum,
+    output cout
+  )
+  {
+  always {
+    sum = a^b^cin;
+    cout = (a&&b)+(cin&&(a^b));
+  }
+}
