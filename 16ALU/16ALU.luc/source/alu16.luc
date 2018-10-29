@@ -34,7 +34,7 @@ module alu16 (
     // BOOL
     boole.a = a;
     boole.b = b;
-    boole.alufn = alufn[3:0]
+    boole.alufn = alufn[3:0];
     
     // SHIFT
     shifter.a = a;

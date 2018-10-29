@@ -1,10 +1,25 @@
+/*
+ * Perform boolean operation(AND, OR, XOR, LDR) for 16 bits input
+ */
 module boolean (
-    input clk,  // clock
-    input rst,  // reset
-    output out
+    input a[16],      // Input signal A
+    input b[16],      // Input signal B
+    input alufn[4],   // ALUFN[3:0]
+    output out[16]    // Output of the boolean
   ) {
 
   always {
-    out = 0;
+    case (alufn) {
+      4b1000:
+        out = a & b;  // AND
+      4b1110:
+        out = a | b;  // OR
+      4b0110:
+        out = a ^ b;  // XOR
+      4b1010:
+        out = a;      // "A" (LDR)
+      default: 
+        out = 16b0;
+    }
   }
 }
