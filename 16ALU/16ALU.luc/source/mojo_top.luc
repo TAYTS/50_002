@@ -19,20 +19,20 @@ module mojo_top (
   ) {
   
   sig rst;                  // reset signal
-  sig confirm;              // confirm button signal
-  sig prev;                 // previous container signal
-  sig next;                 // next container signal
-  
+
   alu16 alu;                // Initialise the 16bit ALU submodule
   
   .clk(clk) {
     // The reset conditioner is used to synchronize the reset signal to the FPGA
     // clock. This ensures the entire FPGA comes out of reset at the same time.
     reset_conditioner reset_cond;
-    button_conditioner confirm_btn;
-    button_conditioner prev_btn;
-    button_conditioner next_btn;
-    
+    button_conditioner confirm_btn(#MIN_DELAY(40));
+    button_conditioner prev_btn(#MIN_DELAY(40));
+    button_conditioner next_btn(#MIN_DELAY(40));
+    edge_detector confirm_edge(#RISE(1), #FALL(0));
+    edge_detector prev_edge(#RISE(1), #FALL(0));
+    edge_detector next_edge(#RISE(1), #FALL(0));
+
     .rst(rst) {
       display_container display;
       dff idx[2];
@@ -68,17 +68,19 @@ module mojo_top (
     // Define IO button  function //
     // Center button for confirm
     confirm_btn.in = io_button[1];
-    confirm = confirm_btn.out;
+    confirm_edge.in = confirm_btn.out;
     // Left button to go back previous container
     prev_btn.in = io_button[3];
-    prev = prev_btn.out;
-    if (prev && idx.q > 0)
+    prev_edge.in = prev_btn.out;
+    if (prev_edge.out && idx.q > 0) {
       idx.d = idx.q - 1b1;
+    }
     // Right button to go next container
     next_btn.in = io_button[4];
-    next = next_btn.out;
-    if (next && idx.q < 3)
+    next_edge.in = next_btn.out;
+    if (next_edge.out && idx.q < 3) {
       idx.d = idx.q + 1b1;
+    }
     ////////////////////////////////
     
     // Display the current container name //
@@ -88,7 +90,7 @@ module mojo_top (
     ////////////////////////////////////////
     
     // Update and display the current container value //
-    if (confirm) { // Update the container value
+    if (confirm_edge.out) { // Update the container value
       case(idx.q) {
         2b00:
           container_a.d = c{io_dip[1], io_dip[0]};
