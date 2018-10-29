@@ -1,0 +1,16 @@
+/*
+ * Calculate the addition/subtraction for single bit
+*/
+module single_adder (
+    input a,        // Input signal A
+    input b,        // Input signal B
+    input cin,      // Input signal Carry-in
+    output sum,     // Output signal Sum
+    output cout     // Output signal Carry-out
+  )
+  {
+  always {
+    sum = a ^ b ^ cin;
+    cout = (a & b) + (cin & (a ^ b));
+  }
+}

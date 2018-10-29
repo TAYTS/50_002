@@ -1,0 +1,124 @@
+module mojo_top (
+    input clk,              // 50MHz clock
+    input rst_n,            // reset button (active low)
+    output led [8],         // 8 user controllable LEDs
+    input cclk,             // configuration clock, AVR ready when high
+    output spi_miso,        // AVR SPI MISO
+    input spi_ss,           // AVR SPI Slave Select
+    input spi_mosi,         // AVR SPI MOSI
+    input spi_sck,          // AVR SPI Clock
+    output spi_channel [4], // AVR general purpose pins (used by default to select ADC channel)
+    input avr_tx,           // AVR TX (FPGA RX)
+    output avr_rx,          // AVR RX (FPGA TX)
+    input avr_rx_busy,      // AVR RX buffer full
+    output io_led [3][8],   // LEDs on IO Shield
+    output io_seg [8],      // 7-segment LEDs on IO Shield
+    output io_sel [4],      // Digit select on IO Shield
+    input io_button [5],    // 5 buttons on IO Shield
+    input io_dip [3][8]     // DIP switches on IO Shield
+  ) {
+  
+  sig rst;                  // reset signal
+
+  alu16 alu;                // Initialise the 16bit ALU submodule
+  
+  .clk(clk) {
+    // The reset conditioner is used to synchronize the reset signal to the FPGA
+    // clock. This ensures the entire FPGA comes out of reset at the same time.
+    reset_conditioner reset_cond;
+    button_conditioner confirm_btn(#MIN_DELAY(40));
+    button_conditioner prev_btn(#MIN_DELAY(40));
+    button_conditioner next_btn(#MIN_DELAY(40));
+    edge_detector confirm_edge(#RISE(1), #FALL(0));
+    edge_detector prev_edge(#RISE(1), #FALL(0));
+    edge_detector next_edge(#RISE(1), #FALL(0));
+
+    .rst(rst) {
+      display_container display;
+      dff idx[2];
+      dff container_a[16];
+      dff container_b[16];
+      dff container_alu[6];
+      dff container_output[19];
+    }
+  }
+  
+  always {
+    reset_cond.in = ~rst_n; // input raw inverted reset signal
+    rst = reset_cond.out;   // conditioned reset
+    
+    led = 8h00;             // turn LEDs off
+    spi_miso = bz;          // not using SPI
+    spi_channel = bzzzz;    // not using flags
+    avr_rx = bz;            // not using serial port
+    
+    io_led = 3x{{8h00}};    // turn LEDs off
+    io_seg = 8hff;          // turn segments off
+    io_sel = 4hf;           // select no digits
+    
+    
+    // Connect the ALU input and output//
+    alu.a = container_a.q;
+    alu.b = container_b.q;
+    alu.alufn = container_alu.q;
+    container_output.d = c{alu.z, alu.v, alu.n, alu.out};
+    //////////////////////////
+    
+    
+    // Define IO button  function //
+    // Center button for confirm
+    confirm_btn.in = io_button[1];
+    confirm_edge.in = confirm_btn.out;
+    // Left button to go back previous container
+    prev_btn.in = io_button[3];
+    prev_edge.in = prev_btn.out;
+    if (prev_edge.out && idx.q > 0) {
+      idx.d = idx.q - 1b1;
+    }
+    // Right button to go next container
+    next_btn.in = io_button[4];
+    next_edge.in = next_btn.out;
+    if (next_edge.out && idx.q < 3) {
+      idx.d = idx.q + 1b1;
+    }
+    ////////////////////////////////
+    
+    // Display the current container name //
+    display.option = idx.q;
+    io_seg = ~display.seg;
+    io_sel = ~display.sel;
+    ////////////////////////////////////////
+    
+    // Update and display the current container value //
+    if (confirm_edge.out) { // Update the container value
+      case(idx.q) {
+        2b00:
+          container_a.d = c{io_dip[1], io_dip[0]};
+        2b01:
+          container_b.d = c{io_dip[1], io_dip[0]};
+        2b10:
+          container_alu.d = c{io_dip[1], io_dip[0]};
+      }
+    }
+    else {  // Display the container value as LED
+      case(idx.q) {
+        2b00:
+          io_led[0] = container_a.q[7:0];
+          io_led[1] = container_a.q[15:8];
+        2b01:
+          io_led[0] = container_b.q[7:0];
+          io_led[1] = container_b.q[15:8];
+        2b10:
+          io_led[0] = container_alu.q[5:0];
+      }
+    }
+    
+    // Display the Output container value
+    if (idx.q == 2b11) {
+      io_led[0] = container_output.q[7:0];   // 0-8th bit output
+      io_led[1] = container_output.q[15:8];  // 9-15th bit output
+      io_led[2] = container_output.q[18:16]; // z, v, n
+    }
+    //////////////////////////////////////////////////
+  }
+}

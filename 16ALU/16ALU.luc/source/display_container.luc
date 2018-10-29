@@ -1,0 +1,64 @@
+/*
+   This is used to display the curent container name
+   option: 0 => Container A
+   option: 1 => Container B
+   option: 2 => Container ALUFN
+   option: 3 => Contaier Output
+*/
+module display_container #(
+    CHARS = 3 : CHARS > 0, // set the no. of characters
+    DIV = 16 : DIV >= 0    // control the switching speed of characters
+  )(
+    input clk,             // clock
+    input rst,             // reset
+    input option[2],       // Option for displaying the container name
+    output seg [7],        // LED segments
+    output sel [CHARS]     // character selected
+  ) {
+
+  // number of bits required to store CHARS-1
+  const CHARS_BITS = $clog2(CHARS);
+  
+  
+  // Define A
+  const A = {7b0, 7b0, 7b1110111};
+  
+  // Define B
+  const B = {7b0, 7b0, 7b1111111};
+  
+  // Define ALUFN
+  const ALU = {7b1110111, 7b0111000, 7b0111110};
+  
+  // Define Output
+  const OP = {7b0, 7b0111111, 7b1110011};
+  
+  
+  // iterate from 0 to CHARS-1 to diplay each character
+  .clk(clk), .rst(rst) {
+    counter ctr (#DIV(DIV), #SIZE(CHARS_BITS), #TOP(CHARS-1), #UP(1));
+  }
+
+  decoder digit_dec (#WIDTH(CHARS_BITS));   // digit decoder
+
+  always {
+
+    // Select the output container name
+    case(option) {
+      2b00:  // 0
+        seg = A[ctr.value];
+      2b01:  // 1
+        seg = B[ctr.value];
+      2b10:  // 2
+        seg = ALU[ctr.value];
+      2b11:  // 3
+        seg = OP[ctr.value];
+      default:
+        seg = 7b0;
+    }
+
+    // Set the display segment
+    digit_dec.in = ctr.value;
+    // Set the display unit
+    sel = digit_dec.out[CHARS_BITS:0];
+  }
+}
