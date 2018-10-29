@@ -1,0 +1,207 @@
+module testALU16 (
+    input clk,  // clock
+    input rst,  // reset
+    output out[16] //output bits
+  ) {
+
+  alu16 alu; 
+  
+  .clk(clk), .rst(rst){
+    dff counter[32];
+    fsm state = {START, ADD, ADD_O, SUB, SUB_O, AND, AND_FAIL, OR, OR_FAIL, XOR, A, SHL, SHR, SRA, CMPEQ, CMPLT, CMPLT_EQ, CMPLE, CMPLE_EQ, FAIL, PASS}
+  }
+  
+  always {
+    counter.d = counter.q + 1;
+    //Tests
+    case(state.q){
+      state.START:
+        alu.alufn = 0;
+        out = 16b0;
+        alu.a = 0;
+        alu.b = 0;
+        state.d = state.ADD;
+      
+      //add
+      state.ADD:
+        alu.alufn = 6b0;
+        alu.a  = 16b10;
+        alu.b = 16b11110;
+        if (alu.out == 16b100000){ //correct result 
+          out = 16b100000;}
+          state.d = state.ADD_O
+        else{
+          state.d = state.FAIL;
+        }
+      
+      //overflow in addition
+      state.ADD_O:
+        alu.alufn = 6b0;
+        alu.a = 16b0111111111111111;
+        alu.b = 16b0111111111111111;
+        if (alu.v == 1){ //overflow occured because positive numbers gave negative output
+          //something to display overflow? 
+          state.d = state.SUB;
+          }
+        else{state.d = state.FAIL;}
+    
+      //subtraction
+      state.SUB: 
+        alu.alufn = 6b1;
+        alu.a = 16b110;
+        alu.b = 16b11;
+        if(alu.out == 16b11){
+          //show pass
+          state.d = state.SUB_O;
+        }
+        else{state.d = state.FAIL;} 
+      
+      //overflow in subtraction
+      state.SUB_O:
+        alu.alufn = 6b1; 
+        //cannot think of a case where two negs to pos...
+        if(alu.out == ){
+          //show pass
+          state.d = state.SUB_AND;
+        }
+        else{state.d = state.FAIL;} 
+      
+      //AND:
+      /*Output will be ‘high’ if and only if all inputs are ‘high’;
+         every matching digit (if there are) is a 1 */
+      state.AND:
+        alu.alufn = 6b011000;
+        alu.a = 16b111;
+        alu.b = 16b111;
+        if(alu.out == 16b1){
+          //show pass
+          state.d = state.AND_FAIL;
+        }
+        else{state.d = state.FAIL;}
+        
+      state.AND_FAIL:
+        alu.alufn = 6b011000;
+        alu.a = 16b110;
+        alu.b = 16b010;
+        if(alu.out == 16b0){
+          //show pass
+          state.d = state.OR;
+        }
+        else{state.d = state.FAIL;}
+          
+      /*Output will be ‘high’ if every ith digit of either a and b is 1 */  
+      state.OR:
+        alu.alufn = 6b011110;
+        alu.a = 16b101;
+        alu.b = 16b010;
+        if(alu.out == 16b1){
+          //show pass
+          state.d = state.OR_FAIL;
+        }
+        else{state.d = state.FAIL;}
+        
+      state.OR_FAIL:
+        alu.alufn = 6b011110;
+        alu.a = 16b010;
+        alu.b = 16b100;
+        if (alu.out == 16b0){
+          //show pass
+          state.d = state.XOR;}
+        else{state.d = state.FAIL;}
+        
+      state.A:
+        alu.alufn = 6b011010;
+        alu.a = 16b0;
+        alu.b = 16b1;
+        if (alu.out == 16b0){
+          //show pass
+          state.d = state.SHL;}
+        else{state.d = state.FAIL;}
+      
+      /*Shifting: 
+        a is the number we are shifting. 
+        b is the number of bits we are shifting left/right by.*/
+           
+      state.SHL:
+        alu.alufn = 6b100000;
+        alu.a = 16b1111;
+        alu.b = 16b010;
+        if (alu.out == 16b111100) {
+          //show pass
+          state.d = state.SHR;}
+        else{state.d = state.FAIL;}
+          
+      state.SHR:
+        alu.alufn = 6b100001;
+        alu.a = 16b1111;
+        alu.b = 16b010;
+        if(alu.out == 16b0011){
+          //show pass
+          state.d = state.SRA;}
+        else{state.d = state.FAIL;}
+        
+      state.SRA:
+        alu.alufn = 6b100011;
+        alu.a = 16b1001;
+        alu.b = 16b010;
+        if (alu.out == 16b1110){
+          //show pass
+          state.d = state.CMPEQ;}
+        else{state.d = state.FAIL;}
+      
+      state.CMPEQ:
+        alu.alufn = 6b110011;
+        alu.a = 16b101101;
+        alu.b = 16101101;
+        if (alu.out == 16b1){
+          //show pass
+          state.d = state.CMPLT;
+        }
+        else{state.d = state.FAIL;}
+        
+      state.CMPLT:
+        alu.alufn = 6b110101;
+        alu.a = 16b1100;
+        alu.b = 16b1111;
+        if (alu.out == 16b1){
+          //show pass
+          state.d = state.CMPLT_EQ;}
+        else{state.d = state.FAIL;}
+      
+      state.CMPLT_EQ:
+        alu.alufn = 6b110101;
+        alu.a = 16b1100;
+        alu.b = 16b1100;
+        if (alu.out == 16b0){
+          //show pass
+          state.d = state.CMPLE;}
+        else{state.d = state.FAIL;}    
+        
+      state.CMPLE:
+        alu.alufn = 6b110111;
+        alu.a = 16b1100;
+        alu.b = 16b1111;
+        if (alu.out == 16b1){
+          //show pass
+          state.d = state.CMPLE_EQ;}
+        else{state.d = state.FAIL;}  
+      
+      state.CMPLE_EQ:
+        alu.alufn = 6b110111;
+        alu.a = 16b1100;
+        alu.b = 16b1100;
+        if (alu.out == 16b1){
+          //show pass
+          state.d = state.PASS;}
+        else{state.d = state.FAIL;}   
+        
+          
+      state.FAIL:
+        //seven segment display FAIL
+        alu.invalid = 1b1; //?
+        
+      state.PASS:
+        //seven segment display PASS
+        alu.invalid = 1b0; //?
+  }
+}
