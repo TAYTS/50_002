@@ -1,3 +1,6 @@
+/*
+ * Define the segments that need to light up to represent all the number[0-9]
+ */
 module seg_digit (
     input char[4],
     output segs[7]
@@ -11,7 +14,7 @@ module seg_digit (
       3: segs = 7b1001111;
       4: segs = 7b1100110;
       5: segs = 7b1101101;
-      6: segs = 711111101;
+      6: segs = 7b1111101;
       7: segs = 7b0000111;
       8: segs = 7b1111111;
       9: segs = 7b1100111;

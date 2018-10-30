@@ -1,3 +1,8 @@
+/*
+ * Display the test case index on the segments display on IO shield
+ * Take in the value that need to display in 4x4 array
+ */
+
 module display_test_cases #(
     DIGITS = 4 : DIGITS > 0,   // Set the number segments need to display
     DIV = 16 : DIV >= 0        // control the switching speed of characters

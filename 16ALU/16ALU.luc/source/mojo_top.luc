@@ -128,12 +128,13 @@ module mojo_top (
     // Test Cases Interface //
     test_idx.values = testALU16.idx;
     disp_status.status = testALU16.status;
+    led = testALU16.count;  // For visual purpose only
     // Go to auto testing mode //
     if (io_dip[2][7] == 1) {
       io_led = 3x{{8h00}};
       /////////////////////////////////////////////
       // Display the test cases index and result //
-      if (testALU16.status == 2b11) {
+      if (testALU16.status == 2b00) {
         io_seg = ~test_idx.seg;
         io_sel = ~test_idx.sel;
       } else {

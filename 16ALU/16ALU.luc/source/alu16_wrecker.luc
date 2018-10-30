@@ -1,3 +1,6 @@
+/*
+ * Submodule to negate the input A for the 16bits ALU 
+ */
 module alu16_wrecker (
     input a[16],
     input active[1],
