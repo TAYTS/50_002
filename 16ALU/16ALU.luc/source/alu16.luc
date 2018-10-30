@@ -1,3 +1,6 @@
+/*
+ * 16bits ALU submodule
+ */
 module alu16 (
     input a[16],      // Input signal A
     input b[16],      // Input signal B

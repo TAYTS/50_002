@@ -1,6 +1,6 @@
 /*
  * Calculate the addition/subtraction for single bit
-*/
+ */
 module single_adder (
     input a,        // Input signal A
     input b,        // Input signal B
