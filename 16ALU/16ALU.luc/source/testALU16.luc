@@ -82,7 +82,7 @@ module testALU16 (
         alu.alufn = 6b011000;
         alu.a = 16b111;
         alu.b = 16b111;
-        if(alu.out == 16b1){
+        if(alu.out == 16b111){
           //show pass
           state.d = state.AND_FAIL;
         }
@@ -92,7 +92,7 @@ module testALU16 (
         alu.alufn = 6b011000;
         alu.a = 16b110;
         alu.b = 16b010;
-        if(alu.out == 16b0){
+        if(alu.out == 16b010){
           //show pass
           state.d = state.OR;
         }
@@ -151,9 +151,9 @@ module testALU16 (
         
       state.SRA:
         alu.alufn = 6b100011;
-        alu.a = 16b1001;
+        alu.a = 16b1000000000000000;
         alu.b = 16b010;
-        if (alu.out == 16b1110){
+        if (alu.out == 16b1110000000000000){
           //show pass
           state.d = state.CMPEQ;}
         else{state.d = state.FAIL;}
