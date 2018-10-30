@@ -1,0 +1,15 @@
+module alu16_wrecker (
+    input a[16],
+    input active[1],
+    output wrecked_a[16]
+  ) {
+
+  always {
+    if (active) {
+      wrecked_a = ~a;
+    } else {
+      wrecked_a = a;
+    }
+    
+  }
+}

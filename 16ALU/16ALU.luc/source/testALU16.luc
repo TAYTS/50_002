@@ -1,216 +1,246 @@
-/*
-   todo:
-   - does code make sense?
-   - case for two negative numbers giving a positive number
-   - how to indicate PASS/FAIL
-*/
-
-
 module testALU16 (
-    input clk,  // clock
-    input rst,  // reset
-    output out[16] //output bits
+    input clk,
+    input rst,
+    input wreck[1],
+    output idx[4][4],   // To show the test case index
+    output status[2]    // Status of the test
   ) {
 
+  // Instantiate 16bits ALU submodule
   alu16 alu; 
+  alu16_wrecker wreck_alu;
   
   .clk(clk), .rst(rst){
-    dff counter[32];
-    fsm state = {START, ADD, ADD_O, SUB, SUB_O, AND, AND_FAIL, OR, OR_FAIL, XOR, A, SHL, SHR, SRA, CMPEQ, CMPLT, CMPLT_EQ, CMPLE, CMPLE_EQ, FAIL, PASS}
+    dff counter[3];
+    fsm state = {ADD1, ADD2, 3, 4, 5, AND_FAIL, OR, OR_FAIL, XOR, A, SHL, SHR, SRA, CMPEQ, CMPLT, CMPLT_EQ, CMPLE, CMPLE_EQ, FAIL, PASS};
   }
   
   always {
+    
+    // Counter used to create delay
     counter.d = counter.q + 1;
     
-    //Tests
-    case(state.q){
-      state.START:
-        alu.alufn = 0;
-        out = 16b0;
-        alu.a = 0;
-        alu.b = 0;
-        state.d = state.ADD;
-      
-      //add
-      state.ADD:
-        alu.alufn = 6b0;
-        alu.a  = 16b10;
-        alu.b = 16b11110;
-        if (alu.out == 16b100000){ //correct result 
-          out = 16b100000;}
-          state.d = state.ADD_O
-        else{
-          state.d = state.FAIL;
-        }
-      
-      //overflow in addition
-      state.ADD_O:
-        alu.alufn = 6b0;
-        alu.a = 16b0111111111111111;
-        alu.b = 16b0111111111111111;
-        if (alu.v == 1){ //overflow occured because positive numbers gave negative output
-          //show pass
-          state.d = state.SUB;
-          }
-        else{state.d = state.FAIL;}
+    // Set the default value for the ALU
+    alu.alufn = 0;
+    alu.b = 0;
+
+    // Wreck the ALU16 input A if wreck == 1
+    wreck_alu.active = wreck;
+    wreck_alu.a = 0;
+    alu.a = wreck_alu.wrecked_a;
+
+    // Set the default values for output
+    idx = 4x{{4h0}};
+    status = 2b11;
     
-      //subtraction
-      state.SUB: 
-        alu.alufn = 6b1;
-        alu.a = 16b110;
-        alu.b = 16b11;
-        if(alu.out == 16b11){
-          //show pass
-          state.d = state.SUB_O;
-        }
-        else{state.d = state.FAIL;} 
+    //Tests
+    if (counter.q == 7) {
+      case(state.q){
+        // Test ADD operation
+        // Test case: 0
+        // Positive + Positive
+        state.ADD1:
+          idx = 4x{{4h0}};
+          alu.alufn = 0;
+          wreck_alu.a = 16b10;
+          alu.b = 16b11110;
+          if (alu.out == 16b100000 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.ADD2;
+          }
+          else {
+            state.d = state.FAIL;
+          }
       
-      //overflow in subtraction
-      state.SUB_O:
-        alu.alufn = 6b1; 
-        //cannot think of a case where two negs to pos...
-        if(alu.out == ){
-          //show pass
-          state.d = state.SUB_AND;
-        }
-        else{state.d = state.FAIL;} 
+        // Test case: 1
+        // Positive + Positive (Overflow)
+        state.ADD2:
+          idx = c{3x{{4h0}}, {4h1}};
+          alu.alufn = 0;
+          wreck_alu.a = c{0, 15x{1}};
+          alu.b = c{0, 15x{1}};
+          if (alu.out == c{15x{1}, 0} && alu.z == 0 && alu.v == 1 && alu.n == 1) {
+            state.d = state.ADD3;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+    
+        // Test case: 2
+        // ADD Boundary
+        state.ADD3:
+          idx = c{3x{{4h0}}, {4h2}};
+          alu.alufn = 0;
+          wreck_alu.a = c{0, 15x{1}};
+          alu.b = c{0, 15x{1}};
+          if (alu.out == c{1, 15x{0}} && alu.z == 0 && alu.v == 0 && alu.n == 1) {
+            state.d = state.ADD4;
+          }
+          else {
+            state.d = state.FAIL;
+          } 
+                  
+        // Test case: 3
+        // Negative + Positive
+        state.ADD4:
+          idx = c{3x{{4h0}}, {4h3}};
+          alu.alufn = 0;
+          wreck_alu.a = 16x{1};
+          alu.b = c{0, 15x{1}};
+          if(alu.out == c{0, 14x{1}, 0} && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.ADD5;
+          }
+          else {
+            state.d = state.FAIL;
+          } 
       
-      //AND:
-      /*Output will be ‘high’ if and only if all inputs are ‘high’;
-         every matching digit (if there are) is a 1 */
-      state.AND:
-        alu.alufn = 6b011000;
-        alu.a = 16b111;
-        alu.b = 16b111;
-        if(alu.out == 16b111){
-          //show pass
-          state.d = state.AND_FAIL;
-        }
-        else{state.d = state.FAIL;}
-        
-      state.AND_FAIL:
-        alu.alufn = 6b011000;
-        alu.a = 16b110;
-        alu.b = 16b010;
-        if(alu.out == 16b010){
-          //show pass
-          state.d = state.OR;
-        }
-        else{state.d = state.FAIL;}
+        // Test case: 4
+        // Negative + Negative
+        state.ADD5:
+          idx = c{3x{{4h0}}, {4h4}};
+          alu.alufn = 0;
+          wreck_alu.a = 16x{1};
+          alu.b = 16x{1};
+          if (alu.out == c{15x{1}, 0} && alu.z == 0 && alu.v == 0 && alu.n == 1) {
+            state.d = state.SUB1;
+          }
+          else {
+            state.d = state.FAIL;
+          }
           
-      /*output will be ‘high’ if every ith digit of either a and b is 1 */  
-      state.OR:
-        alu.alufn = 6b011110;
-        alu.a = 16b101;
-        alu.b = 16b010;
-        if(alu.out == 16b1){
-          //show pass
-          state.d = state.OR_FAIL;
-        }
-        else{state.d = state.FAIL;}
+        // Test case: 5
+        // Positive - Positive
+        state.SUB1:
+          idx = c{3x{{4h0}}, {4h5}};
+          alu.alufn = 6b1;
+          wreck_alu.a = 16b10;
+          alu.b = 16b11110;
+          if (alu.out == c{14x{1}, 2x{0}} && alu.z == 0 && alu.v == 0 && alu.n == 1) {
+            state.d = state.SUB2;
+          }
+          else {
+            state.d = state.FAIL;
+          }
         
-      state.OR_FAIL:
-        alu.alufn = 6b011110;
-        alu.a = 16b010;
-        alu.b = 16b100;
-        if (alu.out == 16b0){
-          //show pass
-          state.d = state.XOR;}
-        else{state.d = state.FAIL;}
-        
-      state.A:
-        alu.alufn = 6b011010;
-        alu.a = 16b0;
-        alu.b = 16b1;
-        if (alu.out == 16b0){
-          //show pass
-          state.d = state.SHL;}
-        else{state.d = state.FAIL;}
+        // Test case: 6
+        // Positive - Negative
+        state.SUB2:
+          idx = c{3x{{4h0}}, {4h6}};
+          alu.alufn = 6b1;
+          wreck_alu.a = c{0, 15x{1}};
+          alu.b = 16x{1};
+          if (alu.out == c{0, 14x{1}, 0} && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.SUB3;
+          }
+          else {
+            state.d = state.FAIL;
+          }
       
-      /*shifting: 
-        a is the number we are shifting. 
-        b is the number of bits we are shifting left/right by.*/
-           
-      state.SHL:
-        alu.alufn = 6b100000;
-        alu.a = 16b1111;
-        alu.b = 16b010;
-        if (alu.out == 16b111100) {
-          //show pass
-          state.d = state.SHR;}
-        else{state.d = state.FAIL;}
+        // Test case: 7
+        // Negative - Positive (Boundary)
+        state.SUB3:
+          idx = c{3x{{4h0}}, {4h7}};
+          alu.alufn = 6b1;
+          wreck_alu.a = 16x{1};
+          alu.b = c{0, 15x{1}};
+          if (alu.out == c{1, 15x{0}} && alu.z == 0 && alu.v == 0 && alu.n == 1) {
+            state.d = state.SUB4;
+          }
+          else {
+            state.d = state.FAIL;
+          }
           
-      state.SHR:
-        alu.alufn = 6b100001;
-        alu.a = 16b1111;
-        alu.b = 16b010;
-        if(alu.out == 16b0011){
-          //show pass
-          state.d = state.SRA;}
-        else{state.d = state.FAIL;}
-        
-      state.SRA:
-        alu.alufn = 6b100011;
-        alu.a = 16b1000000000000000;
-        alu.b = 16b010;
-        if (alu.out == 16b1110000000000000){
-          //show pass
-          state.d = state.CMPEQ;}
-        else{state.d = state.FAIL;}
+        // Test case: 8
+        // Negative - Negative  
+        state.SHR:
+          idx = c{3x{{4h0}}, {4h8}};
+          alu.alufn = 6b100001;
+          alu.a = 16b1111;
+          alu.b = 16b010;
+          if (alu.out == 16b0011 && alu.z == 0 && alu.v == 0 && alu.n ==0) {
+            state.d = state.SRA;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+
+        state.SRA:
+          idx = c{3x{{4h0}}, {4h9}};
+          alu.alufn = 6b100011;
+          alu.a = 16b1000000000000000;
+          alu.b = 16b010;
+          if (alu.out == 16b1110000000000000 && alu.z == 0 && alu.v == 0 && alu.n ==0) {
+            state.d = state.CMPEQ;
+          }
+          else {
+            state.d = state.FAIL;
+          }
       
-      state.CMPEQ:
-        alu.alufn = 6b110011;
-        alu.a = 16b101101;
-        alu.b = 16101101;
-        if (alu.out == 16b1){
-          //show pass
-          state.d = state.CMPLT;
-        }
-        else{state.d = state.FAIL;}
-        
-      state.CMPLT:
-        alu.alufn = 6b110101;
-        alu.a = 16b1100;
-        alu.b = 16b1111;
-        if (alu.out == 16b1){
-          //show pass
-          state.d = state.CMPLT_EQ;}
-        else{state.d = state.FAIL;}
+        // Test COMPARE operation
+        state.CMPEQ:
+          idx = c{2x{{4h0}}, {4h1}, {4h0}};
+          alu.alufn = 6b110011;
+          alu.a = 16b101101;
+          alu.b = 16101101;
+          if (alu.out == 16b1 && alu.z == 0 && alu.v == 0 && alu.n ==0) {
+            state.d = state.CMPLT;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+
+        state.CMPLT:
+          idx = c{2x{{4h0}}, {4h1}, {4h1}};
+          alu.alufn = 6b110101;
+          alu.a = 16b1100;
+          alu.b = 16b1111;
+          if (alu.out == 16b1 && alu.z == 0 && alu.v == 0 && alu.n ==0) {
+            state.d = state.CMPLT_EQ;
+          }
+          else {
+            state.d = state.FAIL;
+          }
       
-      state.CMPLT_EQ:
-        alu.alufn = 6b110101;
-        alu.a = 16b1100;
-        alu.b = 16b1100;
-        if (alu.out == 16b0){
-          //show pass
-          state.d = state.CMPLE;}
-        else{state.d = state.FAIL;}    
+        state.CMPLT_EQ:
+          idx = c{2x{{4h0}}, {4h1}, {4h2}};
+          alu.alufn = 6b110101;
+          alu.a = 16b1100;
+          alu.b = 16b1100;
+          if (alu.out == 16b0 && alu.z == 0 && alu.v == 0 && alu.n ==0) {
+            state.d = state.CMPLE;
+          }
+          else {
+            state.d = state.FAIL;
+          }    
         
-      state.CMPLE:
-        alu.alufn = 6b110111;
-        alu.a = 16b1100;
-        alu.b = 16b1111;
-        if (alu.out == 16b1){
-          //show pass
-          state.d = state.CMPLE_EQ;}
-        else{state.d = state.FAIL;}  
-      
-      state.CMPLE_EQ:
-        alu.alufn = 6b110111;
-        alu.a = 16b1100;
-        alu.b = 16b1100;
-        if (alu.out == 16b1){
-          //show pass
-          state.d = state.PASS;}
-        else{state.d = state.FAIL;}   
-        
-          
-      state.FAIL:
-        //seven segment display FAIL
-        alu.invalid = 1b1; //?
-        
-      state.PASS:
-        //seven segment display PASS
-        alu.invalid = 1b0; //?
+        state.CMPLE:
+          idx = c{2x{{4h0}}, {4h1}, {4h3}};
+          alu.alufn = 6b110111;
+          alu.a = 16b1100;
+          alu.b = 16b1111;
+          if (alu.out == 16b1 && alu.z == 0 && alu.v == 0 && alu.n ==0) {
+            state.d = state.CMPLE_EQ;
+          }
+          else {
+            state.d = state.FAIL;
+          }  
+
+        state.CMPLE_EQ:
+          idx = c{2x{{4h0}}, {4h1}, {4h4}};
+          alu.alufn = 6b110111;
+          alu.a = 16b1100;
+          alu.b = 16b1100;
+          if (alu.out == 16b1 && alu.z == 0 && alu.v == 0 && alu.n ==0) {
+            state.d = state.PASS;
+          }
+          else {
+            state.d = state.FAIL;
+          }   
+
+        state.FAIL:
+          status = 2b00;
+
+        state.PASS:
+          status = 2b01;
+    }
   }
 }
