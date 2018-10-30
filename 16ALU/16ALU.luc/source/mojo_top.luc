@@ -126,11 +126,13 @@ module mojo_top (
     
     
     // Test Cases Interface //
+    test_idx.values = testALU16.idx;
+    disp_status.status = testALU16.status;
+    // Go to auto testing mode //
     if (io_dip[2][7] == 1) {
+      io_led = 3x{{8h00}};
       /////////////////////////////////////////////
       // Display the test cases index and result //
-      test_idx.values = testALU16.idx;
-      disp_status.status = testALU16.status;
       if (testALU16.status == 2b11) {
         io_seg = ~test_idx.seg;
         io_sel = ~test_idx.sel;
@@ -138,6 +140,12 @@ module mojo_top (
         io_seg = ~disp_status.seg;
         io_sel = ~disp_status.sel;
       }
+    }
+    // Wreck the auto testing alu input A //
+    if (io_dip[2][6] == 1) {
+      testALU16.wreck = 1b1; 
+    } else {
+      testALU16.wreck = 1b0; 
     }
     /////////////////////////////////////////////
     
