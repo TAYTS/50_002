@@ -1,0 +1,53 @@
+/*
+ *  This is used to display the status string based on the input signal
+ *  status: 2 => PASS
+ *  status: 1 => FAIL
+ *  invalid => Empty
+ */
+module display_status #(
+    CHARS = 4 : CHARS > 0, // set the no. of characters
+    DIV = 16 : DIV >= 0    // control the switching speed of characters
+  )(
+    input clk,             // clock
+    input rst,             // reset
+    input status[2],       // 1 for pass, 0 for fail
+    output seg [7],        // LED segments
+    output sel [CHARS]     // character selected
+  ) {
+  
+  // number of bits required to store CHARS-1
+  const CHARS_BITS = $clog2(CHARS);
+  
+  // iterate from 0 to CHARS-1 to diplay each character
+  .clk(clk), .rst(rst) {
+    counter ctr (#DIV(DIV), #SIZE(CHARS_BITS), #TOP(CHARS-1), #UP(1)); 
+  }
+
+  fail_str fail_dec;    // fail decoder 
+  pass_str pass_dec;    // pass decoder
+
+  decoder digit_dec (#WIDTH(CHARS_BITS));   // digit decoder
+  
+  always {
+
+    // Set empty input for fail_dec and pass_dec
+    fail_dec.char = 3b0;
+    pass_dec.char = 3b0;
+
+    case(status) {
+      2b01:
+        fail_dec.char = ctr.value;
+        seg = fail_dec.segs;
+      2b10:
+        pass_dec.char = ctr.value;
+        seg = pass_dec.segs;
+      default:
+        seg = 7b0;
+    }
+
+    // Set the display segment
+    digit_dec.in = ctr.value;
+    // Set the display unit
+    sel = digit_dec.out;
+  }
+}

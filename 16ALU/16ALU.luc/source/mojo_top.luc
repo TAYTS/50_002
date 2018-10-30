@@ -34,6 +34,9 @@ module mojo_top (
     edge_detector next_edge(#RISE(1), #FALL(0));
 
     .rst(rst) {
+      testALU16 testALU16;
+      display_test_cases test_idx;
+      display_status disp_status;
       display_container display;
       dff idx[2];
       dff container_a[16];
@@ -113,12 +116,39 @@ module mojo_top (
       }
     }
     
-    // Display the Output container value
+    // Display the Output container value //
     if (idx.q == 2b11) {
       io_led[0] = container_output.q[7:0];   // 0-8th bit output
       io_led[1] = container_output.q[15:8];  // 9-15th bit output
       io_led[2] = container_output.q[18:16]; // z, v, n
     }
-    //////////////////////////////////////////////////
+    ///////////////////////////////////////
+    
+    
+    // Test Cases Interface //
+    test_idx.values = testALU16.idx;
+    disp_status.status = testALU16.status;
+    led = testALU16.count;  // For visual purpose only
+    // Go to auto testing mode //
+    if (io_dip[2][7] == 1) {
+      io_led = 3x{{8h00}};
+      /////////////////////////////////////////////
+      // Display the test cases index and result //
+      if (testALU16.status == 2b00) {
+        io_seg = ~test_idx.seg;
+        io_sel = ~test_idx.sel;
+      } else {
+        io_seg = ~disp_status.seg;
+        io_sel = ~disp_status.sel;
+      }
+    }
+    // Wreck the auto testing alu input A //
+    if (io_dip[2][6] == 1) {
+      testALU16.wreck = 1b1; 
+    } else {
+      testALU16.wreck = 1b0; 
+    }
+    /////////////////////////////////////////////
+    
   }
 }

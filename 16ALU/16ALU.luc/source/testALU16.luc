@@ -1,0 +1,435 @@
+/*
+ * Submodule for verify the functionality of the 16 bits ALU
+ */
+module testALU16 (
+    input clk,          // clock
+    input rst,          // reset
+    input wreck[1],     // Flag to negate the input A to ALU
+    output idx[4][4],   // To show the test case index
+    output status[2],   // Status of the test
+    output count[3]     // To show the delay counter
+  ) {
+
+  // Instantiate 16bits ALU submodule
+  alu16 alu; 
+  alu16_wrecker wreck_alu;
+  
+  .clk(clk), .rst(rst){
+    dff counter[28];
+    dff status_store[2];
+    dff index[4][4];
+    fsm state = {ADD1, ADD2, ADD3, ADD4, ADD5, SUB1, SUB2, SUB3, SUB4, SUB5, AND, OR, XOR, LDR, SHL, SHR, SRA, CMPEQ1, CMPEQ2, CMPLT1, CMPLT2, CMPLE1, CMPLE2, MUL1, MUL2, MUL3, MUL4, FAIL, PASS};
+  }
+  
+  always {
+    
+    // Counter used to create delay
+    counter.d = counter.q + 1;
+    
+    // Set the default value for the ALU
+    alu.alufn = 0;
+    alu.b = 0;
+
+    // Wreck the ALU16 input A if wreck == 1
+    wreck_alu.active = wreck;
+    wreck_alu.a = 0;
+    alu.a = wreck_alu.wrecked_a;
+    
+    // For display purpose
+    count = counter.q[26:23];
+    
+    // Get the test case result and the index from storage
+    status = status_store.q;
+    idx = index.q;
+
+    //Tests
+    if (counter.q[26:23] == 7) {  // Add delay so that people can see the progress of testing
+      counter.d = 0;
+      case(state.q) {
+        // Test ADD operation
+        // Test case: 0
+        // Positive + Positive
+        state.ADD1:
+          index.d = 4x{{4h0}};
+          alu.alufn = 0;
+          wreck_alu.a = 16b10;
+          alu.b = 16b11110;
+          if (alu.out == 16b100000 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.ADD2;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+      
+        // Test case: 1
+        // Positive + Positive (Overflow)
+        state.ADD2:
+          index.d = c{3x{{4h0}}, {4h1}};
+          alu.alufn = 0;
+          wreck_alu.a = c{0, 15x{1}};
+          alu.b = c{0, 15x{1}};
+          if (alu.out == c{15x{1}, 0} && alu.z == 0 && alu.v == 1 && alu.n == 1) {
+            state.d = state.ADD3;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+    
+        // Test case: 2
+        // ADD Boundary
+        state.ADD3:
+          index.d = c{3x{{4h0}}, {4h2}};
+          alu.alufn = 0;
+          wreck_alu.a = c{0, 15x{1}};
+          alu.b = 0;
+          if (alu.out == c{0, 15x{1}} && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.ADD4;
+          }
+          else {
+            state.d = state.FAIL;
+          } 
+                  
+        // Test case: 3
+        // Negative + Positive
+        state.ADD4:
+          index.d = c{3x{{4h0}}, {4h3}};
+          alu.alufn = 0;
+          wreck_alu.a = 16x{1};
+          alu.b = c{0, 15x{1}};
+          if(alu.out == c{0, 14x{1}, 0} && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.ADD5;
+          }
+          else {
+            state.d = state.FAIL;
+          } 
+      
+        // Test case: 4
+        // Negative + Negative
+        state.ADD5:
+          index.d = c{3x{{4h0}}, {4h4}};
+          alu.alufn = 0;
+          wreck_alu.a = 16x{1};
+          alu.b = 16x{1};
+          if (alu.out == c{15x{1}, 0} && alu.z == 0 && alu.v == 0 && alu.n == 1) {
+            state.d = state.SUB1;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+          
+        // Test case: 5
+        // Positive - Positive
+        state.SUB1:
+          index.d = c{3x{{4h0}}, {4h5}};
+          alu.alufn = 6b1;
+          wreck_alu.a = 16b10;
+          alu.b = 16b11110;
+          if (alu.out == c{11x{1}, 5b00100} && alu.z == 0 && alu.v == 0 && alu.n == 1) {
+            state.d = state.SUB2;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+        
+        // Test case: 6
+        // Positive - Negative
+        state.SUB2:
+          index.d = c{3x{{4h0}}, {4h6}};
+          alu.alufn = 6b1;
+          wreck_alu.a = c{0, 15x{1}};
+          alu.b = 16x{1};
+          if (alu.out == c{1, 15x{0}} && alu.z == 0 && alu.v == 1 && alu.n == 1) {
+            state.d = state.SUB3;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+      
+        // Test case: 7
+        // Negative - Positive (Boundary)
+        state.SUB3:
+          index.d = c{3x{{4h0}}, {4h7}};
+          alu.alufn = 6b1;
+          wreck_alu.a = 16x{1};
+          alu.b = c{0, 15x{1}};
+          if (alu.out == c{1, 15x{0}} && alu.z == 0 && alu.v == 0 && alu.n == 1) {
+            state.d = state.SUB4;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+          
+        // Test case: 8
+        // Negative - Negative  
+        state.SUB4:
+          index.d = c{3x{{4h0}}, {4h8}};
+          alu.alufn = 6b1;
+          wreck_alu.a = 16x{1};
+          alu.b = 16x{1};
+          if (alu.out == 16b0 && alu.z == 1 && alu.v == 0 && alu.n == 0) {
+            state.d = state.SUB5;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+
+        // Test case: 9
+        // SUB(Overflow)
+        state.SUB5:
+          index.d = c{3x{{4h0}}, {4h9}};
+          alu.alufn = 6b1;
+          wreck_alu.a = c{1, 0, 14x{1}};
+          alu.b = c{0, 1, 14x{0}};
+          if (alu.out == c{0, 15x{1}} && alu.z == 0 && alu.v == 1 && alu.n == 0) {
+            state.d = state.AND;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+      
+        // Test case: 10
+        // AND operation
+        state.AND:
+          index.d = c{2x{{4h0}}, {4h1}, {4h0}};
+          alu.alufn = 6b011000;
+          wreck_alu.a = 16b111;
+          alu.b = 16111;
+          if (alu.out == 16b111 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.OR;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+        // Test case: 11
+        // OR operation
+        state.OR:
+          index.d = c{2x{{4h0}}, {4h1}, {4h1}};
+          alu.alufn = 6b011110;
+          wreck_alu.a = 16b101;
+          alu.b = 16b010;
+          if (alu.out == 16b111 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.XOR;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+      
+        // Test case: 12
+        // XOR operataion
+        state.XOR:
+          index.d = c{2x{{4h0}}, {4h1}, {4h2}};
+          alu.alufn = 6b010110;
+          alu.a = 16b110;
+          alu.b = 16b111;
+          if (alu.out == 16b001 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.LDR;
+          }
+          else {
+            state.d = state.FAIL;
+          }    
+        // Test case: 13
+        // LDR operation
+        state.LDR:
+          index.d = c{2x{{4h0}}, {4h1}, {4h3}};
+          alu.alufn = 6b011010;
+          wreck_alu.a = 0;
+          alu.b = c{10x{0}, 6x{1}};
+          if (alu.out == 0 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.SHL;
+          }
+          else {
+            state.d = state.FAIL;
+          }  
+
+        // Test case: 14
+        // Shift Left operation
+        state.SHL:
+          index.d = c{2x{{4h0}}, {4h1}, {4h4}};
+          alu.alufn = 6b100000;
+          wreck_alu.a = 16b1111;
+          alu.b = 16b10;
+          if (alu.out == 16b111100 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.SHR;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+
+        // Test case: 15
+        // Shift Right operation
+        state.SHR:
+          index.d = c{2x{{4h0}}, {4h1}, {4h5}};
+          alu.alufn = 6b100001;
+          wreck_alu.a = 16b1111;
+          alu.b = 16b10;
+          if (alu.out == 16b0011 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.SRA;
+          }
+          else {
+            state.d = state.FAIL;
+          }   
+
+        // Test case: 16
+        // Shift Right Arithmetic operation
+        state.SRA:
+          index.d = c{2x{{4h0}}, {4h1}, {4h6}};
+          alu.alufn = 6b100011;
+          wreck_alu.a = c{1, 15x{0}};
+          alu.b = 16b10;
+          if (alu.out == c{3x{1}, 13x{0}} && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.CMPEQ1;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+          
+        // Test case: 17
+        // Compare and Equal operation
+        state.CMPEQ1:
+          index.d = c{2x{{4h0}}, {4h1}, {4h7}};
+          alu.alufn = 6b110011;
+          wreck_alu.a = 16b1100;
+          alu.b = 16b1100;
+          if (alu.out == 16b1 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.CMPEQ2;
+          }
+          else {
+            state.d = state.FAIL;
+          }   
+
+        // Test case: 18
+        // Compare and Equal operation
+        state.CMPEQ2:
+          index.d = c{2x{{4h0}}, {4h1}, {4h8}};
+          alu.alufn = 6b110011;
+          wreck_alu.a = 16b11100;
+          alu.b = 16b1100;
+          if (alu.out == 16b0 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.CMPLT1;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+          
+        // Test case: 19
+        // Compare Less Than operation
+        state.CMPLT1:
+          index.d = c{2x{{4h0}}, {4h1}, {4h9}};
+          alu.alufn = 6b110101;
+          wreck_alu.a = 16b1100;
+          alu.b = 16b1111;
+          if (alu.out == 16b1 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.CMPLT2;
+          }
+          else {
+            state.d = state.FAIL;
+          }   
+
+        // Test case: 20
+        // Compare Less Than operation
+        state.CMPLT2:
+          index.d = c{2x{{4h0}}, {4h2}, {4h0}};
+          alu.alufn = 6b110101;
+          wreck_alu.a = 16b1100;
+          alu.b = 16b1100;
+          if (alu.out == 16b0 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.CMPLE1;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+          
+        // Test case: 21
+        // Compare Less Than Equal operation
+        state.CMPLE1:
+          index.d = c{2x{{4h0}}, {4h2}, {4h1}};
+          alu.alufn = 6b110111;
+          wreck_alu.a = 16b1100;
+          alu.b = 16b1111;
+          if (alu.out == 16b1 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.CMPLE2;
+          }
+          else {
+            state.d = state.FAIL;
+          }   
+
+        // Test case: 22
+        // Compare Less Than Equal operation
+        state.CMPLE2:
+          index.d = c{2x{{4h0}}, {4h2}, {4h2}};
+          alu.alufn = 6b110111;
+          wreck_alu.a = 16b1100;
+          alu.b = 16b1100;
+          if (alu.out == 16b1 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.MUL1;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+          
+        // Test case: 23
+        // Positive x Positive
+        state.MUL1:
+          index.d = c{2x{{4h0}}, {4h2}, {4h3}};
+          alu.alufn = 6b000010;
+          wreck_alu.a = 16b11;
+          alu.b = 16b11;
+          if (alu.out == 16b1001 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.MUL2;
+          }
+          else {
+            state.d = state.FAIL;
+          }   
+
+        // Test case: 24
+        // Negative x Negative
+        state.MUL2:
+          index.d = c{2x{{4h0}}, {4h2}, {4h4}};
+          alu.alufn = 6b000010;
+          wreck_alu.a = c{14x{1}, 0, 1};
+          alu.b = c{14x{1}, 0, 1};
+          if (alu.out == 16b1001 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.MUL3;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+          
+        // Test case: 25
+        // Positive x Negatives
+        state.MUL3:
+          index.d = c{2x{{4h0}}, {4h2}, {4h5}};
+          alu.alufn = 6b000010;
+          wreck_alu.a = c{14x{1}, 0, 1};
+          alu.b = 16b11;
+          if (alu.out == c{12x{1}, 0, 3x{1}} && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.MUL4;
+          }
+          else {
+            state.d = state.FAIL;
+          }   
+
+        // Test case: 26
+        // 0 x Negative
+        state.MUL4:
+          index.d = c{2x{{4h0}}, {4h2}, {4h6}};
+          alu.alufn = 6b000010;
+          wreck_alu.a = 16b0;
+          alu.b = c{14x{1}, 2b01};
+          if (alu.out == 16b0 && alu.z == 0 && alu.v == 0 && alu.n == 0) {
+            state.d = state.PASS;
+          }
+          else {
+            state.d = state.FAIL;
+          }
+
+        state.FAIL:
+          status_store.d = 2b01;
+
+        state.PASS:
+          status_store.d = 2b10;
+          
+      }    
+    }      
+  }
+}
