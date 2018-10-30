@@ -1,3 +1,6 @@
+/*
+ * 16bits ALU submodule
+ */
 module alu16 (
     input a[16],      // Input signal A
     input b[16],      // Input signal B
@@ -5,7 +8,8 @@ module alu16 (
     output out[16],   // Output signal of the ALU
     output z[1],      // Output signal z(adder) - Output all 0
     output v[1],      // Output signal v(adder) - Output overflow
-    output n[1]       // Output signal n(adder) - Negative output
+    output n[1],      // Output signal n(adder) - Negative output
+    output invalid[1] // Invalid ALUFN flag
   ) {
 
   // Initialise all the submodules //
@@ -58,6 +62,9 @@ module alu16 (
     z = 1b0;
     v = 1b0;
     n = 1b0;
+    
+    // Define the default invalid flag to false
+    invalid = 1b0;
 
 
     // Connect the output with the respective submodules based on the ALUFN //
@@ -95,7 +102,8 @@ module alu16 (
       6b110111:  // CMPLE comp
         out = comp.out;
       default:
-        out = 16b0;
+        out = 0;
+        invalid = 1b1;
     }
   }
 }
