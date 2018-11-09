@@ -1,0 +1,45 @@
+/*
+ * Linear Feedback Shift Register
+ * This is used to generate the random number of 8bits
+ */
+module lfsr (
+    input clk,          // clock
+    input rst,          // reset
+    input start[1],     // Signal to start the lfsr process
+    input stop[1],      // Signal to stop the FSM looping
+    output out[8],      // Output of the submodule
+    output read[1]      // Flag to state the random number is ready to read
+  ) {
+
+  .clk(clk) {
+    .rst(rst) {
+      dff lfsr[8];   // Store the lfsr result
+      dff bit[8];    // Store the output of the x8+x6+x5+x4+1
+      fsm state = {INIT, PROCESS, DONE};
+    } 
+  }
+ 
+
+  always {
+    
+    out = lfsr.q;
+
+    read = 0;
+    case(state.q) {
+      state.INIT:
+        lfsr.d = 8h03;
+        state.d = state.PROCESS;
+      state.PROCESS:
+        bit.d = ((lfsr.q >> 0) ^ (lfsr.q >> 2) ^ (lfsr.q >> 3) ^ (lfsr.q >> 4)) & 1;
+        lfsr.d = (lfsr.q >> 1) | (bit.q << 7);
+        if (stop)
+          state.d = state.DONE;
+      state.DONE:
+        if (start)
+          state.d = state.PROCESS;
+        else
+          read = 1;
+    }
+
+  }
+}
