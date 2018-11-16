@@ -30,7 +30,8 @@ module mojo_top (
     edge_detector start_edge(#RISE(1), #FALL(0));
 
     .rst(rst) {
-       lfsr lfsr;
+      //lfsr lfsr;
+      checker checker;
     }
   }
   
@@ -51,11 +52,14 @@ module mojo_top (
     stop_edge.in = stop.out;
     start.in = io_button[2];
     start_edge.in = start.out;
-    lfsr.stop = stop_edge.out;
-    lfsr.start = start_edge.out;
-    io_led[1] = lfsr.read;
-    if (lfsr.read == 1b1) {
-      io_led[0] = lfsr.out; 
+    //lfsr.stop = stop_edge.out;
+    //lfsr.start = start_edge.out;
+    checker.usr_input = c{2b11, 2b10, 2b11, 2b11};
+    checker.ans = c{2b11, 2b00, 2b11, 2b10};
+    io_led[2] = checker.read;
+    if (checker.read == 1b1) {
+      io_led[0] = checker.out1;
+      io_led[1] = checker.out2; 
     }
   }
 }
