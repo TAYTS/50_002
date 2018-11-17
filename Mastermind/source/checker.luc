@@ -6,8 +6,8 @@
 module checker (
     input clk,            // clock
     input rst,            // reset
-    input usr_input[8],   // user input(Each 2 bits correspond to a color/values)
-    input ans[8],         // answer of the game
+    input usr_input[16],  // user input(Each lower 2 bits of 4bits window correspond to a color/values)
+    input ans[16],        // answer of the game
     output out1[3],       // number of correct match for both color and position
     output out2[3],       // number of correct match for color only
     output read[1]        // flag for finish the comparison operation
@@ -39,13 +39,8 @@ module checker (
         cows.d = 0;
         // i = 0
         count1.d = 0;
-        // Convert the 8bits input to 16bits so that later we can identify which bits(position) we have compared.
-        // It is not necessary to be 16bits but minimum must be 12bits.
-        // Initial input: 11 11 11 11
-        // Converted input: 0011 0011 0011 0011
-        // If we found perfect match(color&position): 0011 1111 0011 0011
-        copy_usr_input.d = c{2b00, usr_input[7:6], 2b00, usr_input[5:4], 2b00, usr_input[3:2], 2b00, usr_input[1:0]};
-        copy_ans.d = c{2b00, ans[7:6], 2b00, ans[5:4], 2b00, ans[3:2], 2b00, ans[1:0]};
+        copy_usr_input.d = usr_input;
+        copy_ans.d = ans;
         mask.d = 16hf;
         state.d = state.BULLS;
       state.BULLS:
