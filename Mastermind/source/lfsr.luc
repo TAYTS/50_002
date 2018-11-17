@@ -1,33 +1,37 @@
 /*
  * Linear Feedback Shift Register
  * This is used to generate the random number of 8bits
+ * Output is converted to 16bits for the ease of data passsing later,
+ * it is done by padding 2bits of 0 with 2bits interval.
  */
 module lfsr (
     input clk,          // clock
     input rst,          // reset
     input start[1],     // Signal to start the lfsr process
     input stop[1],      // Signal to stop the FSM looping
-    output out[8],      // Output of the submodule
+    output out[16],     // Output of the submodule
     output read[1]      // Flag to state the random number is ready to read
   ) {
 
   .clk(clk) {
     .rst(rst) {
-      dff lfsr[8];   // Store the lfsr result
-      dff bit[8];    // Store the output of the x8+x6+x5+x4+1
+      dff lfsr[8];      // Store the lfsr result
+      dff lfsr16[16];   // 16bits 1fsr output
+      dff bit[8];       // Store the output of the x8+x6+x5+x4+1
       fsm state = {INIT, PROCESS, DONE};
     } 
   }
  
 
   always {
-    
-    out = lfsr.q;
+    // Connect the output signal to the respective storage(dff)
+    out = lfsr16.q;
 
     read = 0;
     case(state.q) {
       state.INIT:
         lfsr.d = 8h03;
+        lfsr16.d = 0;
         state.d = state.PROCESS;
       state.PROCESS:
         bit.d = ((lfsr.q >> 0) ^ (lfsr.q >> 2) ^ (lfsr.q >> 3) ^ (lfsr.q >> 4)) & 1;
@@ -38,6 +42,9 @@ module lfsr (
         if (start)
           state.d = state.PROCESS;
         else
+          // Pad 2bits of 0 with 2bits interval
+          // 11 11 11 11 => 0011 0011 0011 0011
+          lfsr16.d = c{2b00, lfsr.q[7:6], 2b00, lfsr.q[5:4], 2b00, lfsr.q[3:2], 2b00, lfsr.q[1:0]};
           read = 1;
     }
 
