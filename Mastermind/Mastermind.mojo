@@ -9,6 +9,7 @@
     <src>compare.luc</src>
     <src>boolean.luc</src>
     <src>single_adder.luc</src>
+    <src>flipper.luc</src>
     <src>checker.luc</src>
     <src>shifter.luc</src>
     <ucf lib="true">mojo.ucf</ucf>

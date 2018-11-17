@@ -1,0 +1,64 @@
+/*
+ * Used to change the value/color of the Mastermind row combination.
+ * Mode: 0 => Normal mode
+ * Mode: 1 => Flip neighbour mode
+ */
+module flipper ( 
+    input usr_input[16],    // Mastermind row combination
+    input mode[1],          // Mode for toggle operation
+    input instr[4],         // Signal for button pressed by the user
+    output out[16]          // New Mastermind row combination
+  ) {
+
+  alu16 alu16;
+  
+  // Define the toggle position for Mode: 1
+  const FLIP1 = c{4b0001, 4b0001, 4b0000, 4b0000};
+  const FLIP2 = c{4b0001, 4b0001, 4b0001, 4b0000};
+  const FLIP3 = c{4b0000, 4b0001, 4b0001, 4b0001};
+  const FLIP4 = c{4b0000, 4b0000, 4b0001, 4b0001};
+  // Define the toggle position for Mode: 0
+  const NFLIP1 = c{4b0001, 3x{4b0}};
+  const NFLIP2 = c{4b0, 4b0001, 2x{4b0}};
+  const NFLIP3 = c{2x{4b0}, 4b0001, 4b0};
+  const NFLIP4 = c{3x{4b0}, 4b0001};
+  // Add operation OPCODE for ALU
+  const ALUFN = 6b0;
+  // Used to filter the output to only select the lower 2bits of each 4bits window
+  const MASK = 4x{4b0011};
+  
+  always {
+    // Set the ALU input and OPCODE
+    alu16.a = usr_input;
+    alu16.alufn = ALUFN;
+
+    // Filter the unwanted value(Take the lower 2bits of each 4 bits window)
+    out = alu16.out & MASK;
+    
+    // Select the toggle position based on the button pressed by the user
+    case(instr) {
+      4b1000:
+        if (mode)
+          alu16.b = FLIP1;
+        else
+          alu16.b = NFLIP1;
+      4b0100:
+        if (mode)
+          alu16.b = FLIP2;
+        else
+          alu16.b = NFLIP2;
+      4b0010:
+        if (mode)
+          alu16.b = FLIP3;
+        else
+          alu16.b = NFLIP3;
+      4b0001:
+        if (mode)
+          alu16.b = FLIP4;
+        else
+          alu16.b = NFLIP4;
+      default:
+        alu16.b = 0;
+    }
+  }
+}
