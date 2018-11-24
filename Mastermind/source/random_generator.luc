@@ -1,14 +1,11 @@
 /*
  * Linear Feedback Shift Register
- * This is used to generate the random number of 8bits
- * Output is converted to 16bits for the ease of data passsing later,
- * it is done by padding 2bits of 0 with 2bits interval.
+ * This is used to generate 16bits random number
  */
-module lfsr (
+module random_generator (
     input clk,          // clock
     input rst,          // reset
-    input start[1],     // Signal to start the lfsr process
-    input stop[1],      // Signal to stop the FSM looping
+    input stop[1],      // Signal to stop the FSM looping    
     output ans[16],     // Answer of the game
     output init[16],    // Initial row configuration
     output read[1]      // Flag to state the random number is ready to read
@@ -46,9 +43,6 @@ module lfsr (
         if (stop)
           state.d = state.DONE;
       state.DONE:
-        if (start)
-          state.d = state.PROCESS;
-        else
           // Mask the outputs(Select the last 2 bits of each 4 bits window)
           // 0011 0011 0011 0011
           ans = ans_lfsr.q & MASK;
