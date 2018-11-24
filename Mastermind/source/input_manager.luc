@@ -1,0 +1,53 @@
+/*
+ * This module is used to manage and store the row input.
+ */
+module input_manager (
+    input clk,              // clock
+    input rst,              // reset
+    input start[1],         // Flag for starting the game(read signal from the random_generator)
+    input row_entry[16],    // Row entry
+    input toggle[4],        // Signal for increment the corresponding value in the row
+    input mode[1],          // Game mode(0: Normal mode, 1: Flip neighbour mode)
+    input check[1],
+    input done[1],
+    output out[16],
+    output status[2]
+  ) {
+  flipper flipper;
+  .clk(clk) {
+    .rst(rst) {
+      dff current_row[16];
+      fsm state = {INIT, PLAY, CHECK};
+    } 
+  }
+
+  always {
+    out = current_row.q;
+    status = 2b00;
+
+    flipper.usr_input = current_row.q;
+    flipper.instr = 0;  // Prevent the user from changing the input except state.PLAY
+    current_row.d = flipper.out;
+    flipper.mode = mode;
+    
+    case (state.q) {
+      state.INIT:
+        if (start) {
+          current_row.d = row_entry;
+          state.d = state.PLAY;
+        }  
+      state.PLAY:
+        flipper.instr = toggle;
+        status = 2b01;
+        if (check) {
+          state.d = state.CHECK;
+        }
+      state.CHECK:
+        status = 2b10;
+        if (done) {
+          state.d = state.PLAY;
+        }
+    }
+    
+  }
+}

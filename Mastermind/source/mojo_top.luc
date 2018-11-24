@@ -15,28 +15,34 @@ module mojo_top (
     output io_seg [8],      // 7-segment LEDs on IO Shield
     output io_sel [4],      // Digit select on IO Shield
     input io_button [5],    // 5 buttons on IO Shield
-    input io_dip [3][8]     // DIP switches on IO Shield
+    input io_dip [3][8],   // DIP switches on IO Shield
+    input button[5]
   ) {
   
   sig rst;                  // reset signal
-  
-  flipper flipper;
+  sig mrst;
+
   .clk(clk) {
     // The reset conditioner is used to synchronize the reset signal to the FPGA
     // clock. This ensures the entire FPGA comes out of reset at the same time.
     reset_conditioner reset_cond;
-    button_conditioner btn1(#MIN_DELAY(40));
-    button_conditioner btn2(#MIN_DELAY(40));
-    button_conditioner btn3(#MIN_DELAY(40));
-    button_conditioner btn4(#MIN_DELAY(40));
-    edge_detector btn1_edge(#RISE(1), #FALL(0));
-    edge_detector btn2_edge(#RISE(1), #FALL(0));
-    edge_detector btn3_edge(#RISE(1), #FALL(0));
-    edge_detector btn4_edge(#RISE(1), #FALL(0));
-    .rst(rst) {
-      //lfsr lfsr;
-      //checker checker;
-      dff usr_input[16];
+    button_conditioner start;
+    button_conditioner btn1;
+    button_conditioner btn2;
+    button_conditioner btn3;
+    button_conditioner btn4;
+    button_conditioner check(#MIN_DELAY(40));
+    button_conditioner done(#MIN_DELAY(40));
+    edge_detector start_edge(#RISE(0), #FALL(1));
+    edge_detector btn1_edge(#RISE(0), #FALL(1));
+    edge_detector btn2_edge(#RISE(0), #FALL(1));
+    edge_detector btn3_edge(#RISE(0), #FALL(1));
+    edge_detector btn4_edge(#RISE(0), #FALL(1));
+    edge_detector check_edge(#RISE(1), #FALL(0));
+    edge_detector done_edge(#RISE(1), #FALL(0));
+    .rst(rst | mrst) {
+      random_generator rand_gen;
+      input_manager input_manager;
     }
   }
   
@@ -53,22 +59,39 @@ module mojo_top (
     io_seg = 8hff;          // turn segments off
     io_sel = 4hf;           // select no digits
     
-    btn1.in = io_button[1];
+    start.in = button[0];
+    start_edge.in = start.out;
+    btn1.in = button[1];
     btn1_edge.in = btn1.out;
-    btn2.in = io_button[2];
+    btn2.in = button[2];
     btn2_edge.in = btn2.out;
-    btn3.in = io_button[3];
+    btn3.in = button[3];
     btn3_edge.in = btn3.out;
-    btn4.in = io_button[4];
+    btn4.in = button[4];
     btn4_edge.in = btn4.out;
+    check.in = io_button[0];
+    check_edge.in = check.out;
+    done.in = io_button[1];
+    done_edge.in = done.out;
     
-    flipper.usr_input = usr_input.q;
-    flipper.mode = 1;
-    flipper.instr = c{btn1_edge.out, btn2_edge.out, btn3_edge.out, btn4_edge.out};
-    if (btn1_edge.out || btn2_edge.out || btn3_edge.out || btn4_edge.out) {
-      usr_input.d = flipper.out;                
-    }
-    io_led[0] = usr_input.q[7:0];
-    io_led[1] = usr_input.q[15:8];
+    rand_gen.stop = start_edge.out;
+    
+    input_manager.start = rand_gen.read;
+    input_manager.row_entry = rand_gen.init;
+    input_manager.check = check_edge.out;
+    input_manager.done = done_edge.out;
+    input_manager.mode = 0;
+    input_manager.toggle = c{btn1_edge.out, btn2_edge.out, btn3_edge.out, btn4_edge.out};
+    
+    io_led[0] = input_manager.out[7:0];
+    io_led[1] = input_manager.out[15:8];
+    
+    if (check_edge.out)
+      io_led[2][0] = 1b1;
+    if (done_edge.out)
+      io_led[2][1] = 1b1;
+    
+    io_led[2][4:3] = input_manager.status;
+    
   }
 }
