@@ -1,0 +1,58 @@
+/*
+ * This module check the row index and the checker result then decide the end signal
+ * It will convert the result from the checker to the corresponding color value to be saved in board_manager 
+ */
+module feedback (
+    input clk,            // clock
+    input rst,            // reset
+    input done[1],        // Flag for done checking the user entry 
+    input bull[3],        // Number of correct color and position
+    input cow[3],         // Number of correct color
+    input row_idx[3],     // Current row index
+    output end[2],        // Signal for game status(0: Default, 1: WIN, 2: LOSS)
+    output feedback[16]   // Value to be store to board manager about the analysis result
+  ) {
+
+  const WIN = 2b01;
+  const LOSS = 2b10;
+  const YELLOW = 4b0100;
+  const WHITE = 4b0101;
+  const BLACK = 4b0110;
+
+  sig undefined;
+
+  .clk(clk) {
+    .rst(rst) {
+      fsm state = {IDLE, PROCESS};
+    } 
+  }
+
+  always {
+    feedback = 16x{1b1};  // Set invalid feedback value
+    end = 0;
+    case (state.q) {
+      state.IDLE:
+        if (done) {  // When the checker done checking
+          state.d = state.PROCESS;
+        }
+      state.PROCESS:
+        if (row_idx >= 7) {  // Check the current row entry index
+          if (bull == 4) {   // If all correct
+            end = WIN;       // Set the win end flag
+          } else {
+            end = LOSS;      // Set the loss end flag
+          }
+        } else {
+          if (bull == 4) {   // If all correct
+            end = WIN;
+          } else {
+            state.d = state.IDLE; 
+          }
+        }
+        // Calculate the wrong color and position count
+        undefined = 4 - bull - cow;
+        // Convert the checker result to the corresponding color value to be saved in board_manager
+        feedback = c{bullx{YELLOW}, cowx{WHITE}, undefinedx{BLACK}};
+    }
+  }
+}

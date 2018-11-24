@@ -2,6 +2,7 @@
 <project name="Mastermind" board="Mojo V3" language="Lucid">
   <files>
     <src>addmod.luc</src>
+    <src>feedback.luc</src>
     <src>input_manager.luc</src>
     <src>board.luc</src>
     <src top="true">mojo_top.luc</src>
