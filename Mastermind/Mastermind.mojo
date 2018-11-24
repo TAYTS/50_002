@@ -8,6 +8,7 @@
     <src>alu16.luc</src>
     <src>compare.luc</src>
     <src>checker.luc</src>
+    <src>board_manager.luc</src>
     <src>random_generator.luc</src>
     <src>multiply.luc</src>
     <src>boolean.luc</src>
