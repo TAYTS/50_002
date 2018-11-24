@@ -49,7 +49,7 @@ module board_manager (
           lossboard.d = 8x{{ans}};  // All answer
         }
       state.PLAY:
-        if (done) {  // When the checker done checking      
+        if (done && row_idx.q < 7) {  // When the checker done checking      
           row_idx.d = row_idx.q + 1;
         }
 
