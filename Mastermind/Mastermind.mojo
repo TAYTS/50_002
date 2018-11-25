@@ -4,6 +4,7 @@
     <src>addmod.luc</src>
     <src>feedback.luc</src>
     <src>input_manager.luc</src>
+    <src>display_manager.luc</src>
     <src>board.luc</src>
     <src top="true">mojo_top.luc</src>
     <src>alu16.luc</src>
@@ -16,6 +17,7 @@
     <src>single_adder.luc</src>
     <src>flipper.luc</src>
     <src>shifter.luc</src>
+    <ucf>led_strip.ucf</ucf>
     <ucf>custom.ucf</ucf>
     <ucf lib="true">mojo.ucf</ucf>
     <ucf lib="true">io_shield.ucf</ucf>

@@ -16,12 +16,28 @@ module mojo_top (
     output io_sel [4],      // Digit select on IO Shield
     input io_button [5],    // 5 buttons on IO Shield
     input io_dip [3][8],   // DIP switches on IO Shield
-    input button[5]
+    input button[5],
+    output led_strip[8]
   ) {
   
   sig rst;                  // reset signal
   sig mrst;
+  sig data_block[11];
+  sig grb[24];
+  
+  
+  const GRB = {
+    24h00ff00,
+    24h000000,
+    24hffffff,
+    24hffff00,
+    24h00ace6,
+    24h0000ff,
+    24h00ff00,
+    24hff0000
+  };
 
+  var r;
   .clk(clk) {
     // The reset conditioner is used to synchronize the reset signal to the FPGA
     // clock. This ensures the entire FPGA comes out of reset at the same time.
@@ -40,9 +56,12 @@ module mojo_top (
     edge_detector btn4_edge(#RISE(0), #FALL(1));
     edge_detector check_edge(#RISE(1), #FALL(0));
     edge_detector done_edge(#RISE(1), #FALL(0));
+    
     .rst(rst | mrst) {
       random_generator rand_gen;
       input_manager input_manager;
+      dff counter[21];
+      display_manager display_manager;
     }
   }
   
@@ -83,15 +102,37 @@ module mojo_top (
     input_manager.mode = 0;
     input_manager.toggle = c{btn1_edge.out, btn2_edge.out, btn3_edge.out, btn4_edge.out};
     
-    io_led[0] = input_manager.out[7:0];
-    io_led[1] = input_manager.out[15:8];
+    //io_led[0] = input_manager.out[7:0];
+    //io_led[1] = input_manager.out[15:8];
     
-    if (check_edge.out)
-      io_led[2][0] = 1b1;
-    if (done_edge.out)
-      io_led[2][1] = 1b1;
+    //if (check_edge.out)
+    //  io_led[2][0] = 1b1;
+    //if (done_edge.out)
+    //  io_led[2][1] = 1b1;
+
+    display_manager.input_board = {
+      4x{{4b0000}},
+      4x{{4b0001}},
+      4x{{4b0010}},
+      4x{{4b0011}},
+      4x{{4b0000}},
+      4x{{4b0001}},
+      4x{{4b0010}},
+      4x{{4b0011}}
+    };
     
-    io_led[2][4:3] = input_manager.status;
-    
+    display_manager.feedback_board = {
+      4x{{4b0100}},
+      4x{{4b0101}},
+      4x{{4b0110}},
+      4x{{4b0100}},
+      4x{{4b0101}},
+      4x{{4b0110}},
+      4x{{4b0100}},
+      4x{{4b0101}}
+    };
+
+    led_strip = display_manager.led_out;
+    io_led[0] = display_manager.test;
   }
 }
