@@ -1,0 +1,85 @@
+/*
+ * This module is used to convert the value stored in the board_manager to the corresponding LED color.
+ */
+module display_manager (
+    input clk,                // clock
+    input rst,                // reset
+    input input_board[8][4][4],
+    input feedback_board[8][4][4],
+    output led_out[8],
+    output test[8]
+  ) {
+  
+  // Define color constant(GRB)
+  const GREEN = 24hff0000;
+  const RED = 24h00ff00;
+  const BLUE = 24h0000ff;
+  const PURPLE = 24h00ace6;
+  const YELLOW = 24hffff00;
+  const WHITE = 24hffffff;
+  const BLACK = 24h000000;
+  
+  // Define value to color mapping
+  const TOGREEN = 4b0000;
+  const TORED = 4b0001;
+  const TOBLUE = 4b0010;
+  const TOPURPLE = 4b0011;
+  const TOYELLOW = 4b0100;
+  const TOWHITE = 4b0101;
+  const TOBLACK = 4b0110;
+  
+  // Define temporary signal to be used inside the for loop
+  sig data_block[11];
+  sig led_state[4];
+  sig grb[24];
+  
+  // Define the for loop variable
+  var r, c;
+  const ROW = 8;
+  
+  .clk(clk) {
+    .rst(rst) {
+      dff counter[14];
+      dff new_board[8][8][4];
+    }
+  }
+  
+  always {
+    led_out = 8b0;
+    
+    // Combine input and feedback board
+    for (r = 0; r < ROW; r++) {
+      new_board.d[r] = c{feedback_board[r], input_board[r]};
+    }
+    
+    test = 8b0;
+    for (r = 0; r < ROW; r++) {
+      if (counter.q < 64 * 24 * 8) {
+        c = counter.q / (64 * 24);
+        led_state = new_board.q[r][c];
+        case (led_state) {
+          TOGREEN: grb = GREEN;
+          TORED: grb = RED;
+          TOBLUE: grb = BLUE;
+          TOPURPLE: grb = PURPLE;
+          TOYELLOW: grb = YELLOW;
+          TOWHITE: grb = WHITE;
+          TOBLACK: grb = BLACK;
+          default: grb = BLACK;
+        }
+        
+        data_block = counter.q - ((counter.q/(64*24))*(64*24));
+        if (grb[23 - (data_block>>6)] == 0) {
+          if (data_block[5:0] < 20) {
+            led_out[r] = 1;
+          }
+        } else {
+          if (data_block[5:0] < 40) {
+            led_out[r] = 1;
+          }
+        }
+      }
+      counter.d = counter.q + 1;
+    }
+  }
+}
