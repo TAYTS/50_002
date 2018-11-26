@@ -18,7 +18,7 @@
     <src>flipper.luc</src>
     <src>shifter.luc</src>
     <ucf>led_strip.ucf</ucf>
-    <ucf>custom.ucf</ucf>
+    <ucf>buttons.ucf</ucf>
     <ucf lib="true">mojo.ucf</ucf>
     <ucf lib="true">io_shield.ucf</ucf>
     <component>pipeline.luc</component>
