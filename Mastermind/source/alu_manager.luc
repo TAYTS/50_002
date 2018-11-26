@@ -1,0 +1,38 @@
+module alu_manager (
+    input alusel[2],
+    input input_manager_a[16],
+    input input_manager_b[16],
+    input checker_a[16],
+    input checker_b[16],
+    input board_manager_a[16],
+    input board_manager_b[16],
+    input alufn[6],
+    output out[16]
+  ) {
+  
+  alu16 alu;
+
+  always {
+    alu.alufn = alufn;
+    out = alu.out;
+
+    case (alusel) {
+      2b00:
+        alu.a = input_manager_a;
+        alu.b = input_manager_b;
+        
+      2b01:
+        alu.a = checker_a;
+        alu.b = checker_b;
+        
+      2b10:
+        alu.a = board_manager_a;
+        alu.b = board_manager_b;
+        
+      default:
+        alu.a = 0;
+        alu.b = 0;
+        alu.alufn = 0;
+    }
+  }
+}
