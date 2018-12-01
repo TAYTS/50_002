@@ -1,15 +1,22 @@
+/*
+ * This module is used to select the data input for the ALU submodule.
+ * random_generator(AND)
+ * input_manager(ADD)
+ * checker(CMPEQ)
+ */
 module alu_manager (
-    input alusel[2],
-    input input_manager_a[16],
-    input input_manager_b[16],
-    input checker_a[16],
-    input checker_b[16],
-    input board_manager_a[16],
-    input board_manager_b[16],
-    input alufn[6],
-    output out[16]
+    input alusel[2],                // Signal to select the data input set for the ALU
+    input random_generator_a[16],   // random_generator ALU input A
+    input random_generator_b[16],   // random_generator ALU input B
+    input input_manager_a[16],      // input_manager ALU input A
+    input input_manager_b[16],      // input_manager ALU input B
+    input checker_a[16],            // checker ALU input A
+    input checker_b[16],            // checker ALU input A
+    input alufn[6],                 // ALU OPCODE
+    output out[16]                  // Output of the ALU
   ) {
-  
+
+  // Define the ALU submodule
   alu16 alu;
 
   always {
@@ -17,18 +24,15 @@ module alu_manager (
     out = alu.out;
 
     case (alusel) {
-      2b00:
+      2b00:  // AND
+        alu.a = random_generator_a;
+        alu.b = random_generator_b;
+      2b01:  // ADD
         alu.a = input_manager_a;
         alu.b = input_manager_b;
-        
-      2b01:
+      2b10:  // CMPEQ
         alu.a = checker_a;
         alu.b = checker_b;
-        
-      2b10:
-        alu.a = board_manager_a;
-        alu.b = board_manager_b;
-        
       default:
         alu.a = 0;
         alu.b = 0;
