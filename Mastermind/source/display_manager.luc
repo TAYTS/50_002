@@ -1,13 +1,13 @@
 /*
  * This module is used to convert the value stored in the board_manager to the corresponding LED color.
+ * WHAT YOU GET IS WHAT YOU SEE(WYGIWYS)
  */
 module display_manager (
-    input clk,                // clock
-    input rst,                // reset
-    input input_board[8][4][4],
-    input feedback_board[8][4][4],
-    output led_out[8],
-    output test[8]
+    input clk,                      // clock
+    input rst,                      // reset
+    input input_board[8][4][4],     // user entry record
+    input feedback_board[8][4][4],  // checking result record
+    output led_out[8]               // LED signal output
   ) {
   
   // Define color constant(GRB)
@@ -15,7 +15,7 @@ module display_manager (
   const RED = 24h00ff00;
   const BLUE = 24h0000ff;
   const PURPLE = 24h00ace6;
-  const YELLOW = 24hffff00;
+  const ORANGE = 24h99ff33;
   const WHITE = 24hffffff;
   const BLACK = 24h000000;
   
@@ -24,9 +24,9 @@ module display_manager (
   const TORED = 4b0001;
   const TOBLUE = 4b0010;
   const TOPURPLE = 4b0011;
-  const TOYELLOW = 4b0100;
+  const TOBLACK = 4b0100;
   const TOWHITE = 4b0101;
-  const TOBLACK = 4b0110;
+  const TOORANGE = 4b0110;
   
   // Define temporary signal to be used inside the for loop
   sig data_block[11];
@@ -36,44 +36,60 @@ module display_manager (
   // Define the for loop variable
   var r, c;
   const ROW = 8;
-  
+
   .clk(clk) {
     .rst(rst) {
-      dff counter[14];
+      dff counter[15];
       dff new_board[8][8][4];
     }
   }
   
   always {
+    // Default LED signal out is 0
     led_out = 8b0;
     
-    // Combine input and feedback board
-    for (r = 0; r < ROW; r++) {
-      new_board.d[r] = c{feedback_board[r], input_board[r]};
+    // Update the new_board for every 7ffff cycles
+    // Combine the user entry and checking result records
+    if (counter.q == 15h7fff) {
+      for (r = 0; r < ROW; r++) {
+        new_board.d[r] = c{feedback_board[r], input_board[r]};
+      }
     }
-    
-    test = 8b0;
+
     for (r = 0; r < ROW; r++) {
+      // When the clock is within the valid range
+      // Prevent sending extra signal due the counter dff size is much bigger than
+      // the number of clock count needed
       if (counter.q < 64 * 24 * 8) {
+        // Get the column number
         c = counter.q / (64 * 24);
+        // Select the LED state
         led_state = new_board.q[r][c];
+        // Convert the LED state to actual color value
         case (led_state) {
           TOGREEN: grb = GREEN;
           TORED: grb = RED;
           TOBLUE: grb = BLUE;
           TOPURPLE: grb = PURPLE;
-          TOYELLOW: grb = YELLOW;
+          TOORANGE: grb = ORANGE;
           TOWHITE: grb = WHITE;
           TOBLACK: grb = BLACK;
           default: grb = BLACK;
         }
         
+        // Each data block contain all the data needed for one LED
         data_block = counter.q - ((counter.q/(64*24))*(64*24));
+        // data_block = 64 * 24 bit
+        // Shift right 6bits: divide by 2^6(64)
         if (grb[23 - (data_block>>6)] == 0) {
+          // To set logic 0 (1 bit of LED data)
+          // Send HIGH signal for 20 clock cycle
           if (data_block[5:0] < 20) {
             led_out[r] = 1;
           }
         } else {
+          // To set logic 1 (1 bit of LED data)
+          // Send HIGH signal for 40 clock cycle
           if (data_block[5:0] < 40) {
             led_out[r] = 1;
           }
