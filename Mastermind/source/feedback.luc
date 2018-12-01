@@ -1,58 +1,56 @@
 /*
- * This module check the row index and the checker result then decide the end signal
- * It will convert the result from the checker to the corresponding color value to be saved in board_manager 
+ * This module check the row index and the checker result then decide the end signal.
+ * It will pass the checking result to the board_manager and save it.
  */
 module feedback (
-    input clk,            // clock
-    input rst,            // reset
-    input done[1],        // Flag for done checking the user entry 
-    input bull[3],        // Number of correct color and position
-    input cow[3],         // Number of correct color
-    input row_idx[3],     // Current row index
-    output end[2],        // Signal for game status(0: Default, 1: WIN, 2: LOSS)
-    output feedback[16]   // Value to be store to board manager about the analysis result
+    input clk,             // clock
+    input rst,             // reset
+    input chk_done[1],     // Flag for done checking the user entry 
+    input chk_result[16],  // Checking result(Receive the checking result from checker)
+    input row_idx[3],      // Current row index
+    output ending[2],      // Signal for game status(0: CONTINUE, 1: PENDING, 2: WIN, 3: LOSS)
+    output feedback[16]    // Checking result(For storing the checking result into board_manager)
   ) {
 
-  const WIN = 2b01;
-  const LOSS = 2b10;
-  const YELLOW = 4b0100;
-  const WHITE = 4b0101;
-  const BLACK = 4b0110;
+  // Define the constant //
+  const CONTINUE = 2b00;
+  const PENDING = 2b01;
+  const WIN = 2b10;
+  const LOSS = 2b11;
+  const DEFAULT_FEEDBACK = 16x{1b1};
+  // End of constant definition //
 
-  sig undefined;
+  // All correct //
+  const WINING_TEMP = 4x{4b0110};
 
   .clk(clk) {
     .rst(rst) {
-      fsm state = {IDLE, PROCESS};
-    } 
+      dff chk_result_storage[16];  // Save the checker result locally
+      fsm state = {INIT, PROCESS};
+    }
   }
 
   always {
-    feedback = 16x{1b1};  // Set invalid feedback value
-    end = 0;
+    feedback = DEFAULT_FEEDBACK;  // Set invalid feedback value
+    ending = PENDING;             // Set the ending to always PENDING unless in the PROCESS state
     case (state.q) {
-      state.IDLE:
-        if (done) {  // When the checker done checking
+      state.INIT:
+        if (chk_done) {   // When the checker done checking
           state.d = state.PROCESS;
+          chk_result_storage.d = chk_result;  // Save the checker result to local storage
         }
       state.PROCESS:
-        if (row_idx >= 7) {  // Check the current row entry index
-          if (bull == 4) {   // If all correct
-            end = WIN;       // Set the win end flag
-          } else {
-            end = LOSS;      // Set the loss end flag
-          }
+        if (chk_result_storage.q == WINING_TEMP) {  // All correct
+          ending = WIN;
         } else {
-          if (bull == 4) {   // If all correct
-            end = WIN;
-          } else {
-            state.d = state.IDLE; 
+          if (row_idx == 7) {  // User hit the maximum number of trials
+            ending = LOSS;
+          } else {  // Input not correct and trial available; continue(Return to INIT state)
+            ending = CONTINUE;
+            state.d = state.INIT;
           }
         }
-        // Calculate the wrong color and position count
-        undefined = 4 - bull - cow;
-        // Convert the checker result to the corresponding color value to be saved in board_manager
-        feedback = c{bullx{YELLOW}, cowx{WHITE}, undefinedx{BLACK}};
+        feedback = chk_result_storage.q;  // Pass the checking result to board_manager and save it 
     }
   }
 }
