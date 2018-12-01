@@ -1,18 +1,24 @@
 /*
  * This module is used to compare the user input and answer.
- * out1: Correct color and position
- * out2: Correct color but wrong position
+ * chk_result: Output the checking result(Converted to the corresponding colour value)
  */
 module checker (
-    input clk,            // clock
-    input rst,            // reset
-    input usr_input[16],  // user input(Each lower 2 bits of 4bits window correspond to a color/values)
-    input ans[16],        // answer of the game
-    output out1[3],       // number of correct match for both color and position
-    output out2[3],       // number of correct match for color only
-    output read[1]        // flag for finish the comparison operation
+    input clk,              // clock
+    input rst,              // reset
+    input usr_input[16],    // user input(Each lower 2 bits of 4bits window correspond to a color/values)
+    input ans[16],          // answer of the game
+    input confirm[1],       // Confirm user entry signal
+    input alu_result[16],   // ALU CMPEQ result
+    output chk_result[16],  // Checking result(Converted to corresponding color value)
+    output chk_done[1],     // flag for finish the comparison operation
+    output alu_a[16],       // ALU input A
+    output alu_b[16]        // ALU input B
   ) {
   
+  // Define the checking result and colour mapping //
+  const COWS_TEMP = c{4b0101, 3x{4b0}};
+  const BULLS_TEMP = c{4b0110, 3x{4b0}};
+
   .clk(clk) {
     .rst(rst) {
       dff copy_usr_input[16];    // Store a copy of user input
@@ -23,36 +29,49 @@ module checker (
       dff count1[3];             // Used as the for loop counter
       dff count2[3];             // Used as the for loop counter
       dff btemp[16];             // Store a temporary copy_ans when calculate the cows
+      dff idx[4];                // Used to shift the value to color mapping
+      dff result[16];            // Store the checking result
       fsm state = {INIT, BULLS, COWS1, COWS2, SHF1, SHF2, DONE};
     }
   }
+
   always {
     
     // Set the default value and connect the output to the corresponding storage(dff) output
-    read = 0;
-    out1 = bulls.q;
-    out2 = cows.q;
-
+    chk_done = 0;
+    chk_result = 16b0;
+    alu_a = 0 ;
+    alu_b = 0;
+ 
     case(state.q) {
       state.INIT:
         bulls.d = 0;
         cows.d = 0;
-        // i = 0
-        count1.d = 0;
+        count1.d = 0;  // i = 0
         copy_usr_input.d = usr_input;
         copy_ans.d = ans;
         mask.d = 16hf;
-        state.d = state.BULLS;
+        idx.d = 0;
+        result.d = 4x{4b0100}; // Default all FAIL
+        if (confirm) {
+          state.d = state.BULLS;
+        }
       state.BULLS:
         if (count1.q > 3) {  // for loop condition check, i < 4
           state.d = state.COWS1;
-          // i = 0
-          count1.d = 0;
+          count1.d = 0; // i = 0(Reset the iterating counter)
         } else {
           // if the copy_usr_input == copy_ans at that position selected
           // using mask, increase the bulls counter
-          if ((copy_usr_input.q & mask.q) == (copy_ans.q & mask.q)) {
+          alu_a = copy_usr_input.q & mask.q;
+          alu_b = copy_ans.q & mask.q;
+          if (alu_result == 16b1) {
             bulls.d = bulls.q + 1;
+            // Convert the checking result to colour
+            result.d = result.q | (BULLS_TEMP >> idx.q);
+            // Increase the checking result to colour mapping shift by 4bits
+            // Valid on next cycle
+            idx.d = idx.q + 4;
             // Mark the position that match so that later we will not check in
             // when calculate the cows number
             copy_usr_input.d = copy_usr_input.q | mask.q;
@@ -64,7 +83,10 @@ module checker (
           mask.d = mask.q << 4;
         }
       state.COWS1:
-        if (count1.q > 3) {  // for loop condition check, i < 4
+        // for loop condition checker
+        // i < 4
+        // Hit the limit of the checking result
+        if (count1.q > 3 || idx.q > 12) {
           state.d = state.DONE;
         } else {
           // Check if the last position of the copy_usr_input has been marked
@@ -90,12 +112,21 @@ module checker (
         copy_usr_input.d = copy_usr_input.q >> 4;
         state.d = state.COWS1;        
       state.COWS2:
-        if (count2.q > 3) {  // for loop condition check, i < 4
+        // for loop condition checker
+        // i < 4
+        // Hit the limit of the checking result
+        if (count2.q > 3 || idx.q > 12) {
           state.d = state.SHF1;
         } else {
           // Compare user input and answer color(last position)
-          if (btemp.q[3:0] == copy_usr_input.q[3:0]) {
+          alu_a = btemp.q[3:0];
+          alu_b = copy_usr_input.q[3:0];
+          if (alu_result == 16b1) {
             cows.d = cows.q +1;
+            // Increase the checking result to colour mapping shift by 4bits
+            // Valid on next cycle
+            result.d = result.q | (COWS_TEMP >> idx.q);
+            idx.d = idx.q + 4;
             // Mark the answer that has the same color with 
             // user input at different position
             copy_ans.d = copy_ans.q | mask.q;
@@ -113,7 +144,9 @@ module checker (
         btemp.d = btemp.q >> 4;
         state.d = state.COWS2;
       state.DONE:
-        read = 1;
+        chk_result = result.q;
+        state.d = state.INIT;
+        chk_done = 1;
     }
   }
 }
