@@ -74,6 +74,7 @@ module mojo_top (
       checker checker;
       feedback feedback;
       display_manager display_manager;
+      display_gradient display_gradient;
       // End of submodules definition //
 
       // Define all the FSMs and DFFs needed //
@@ -115,8 +116,14 @@ module mojo_top (
     btn4_edge.in = btn4.out;
     // End of button connections //
     
-    // Connect LED Strips to the display_manager.led_out //
-    led_strip = display_manager.led_out;
+    // Connect LED Strips //
+    // Display the fancy gradient in IDLE and IDLE_RAND state(Loading) //
+    if (state.q == state.IDLE || state.q == state.IDLE_RAND) {
+      led_strip = display_gradient.out;
+    } else {
+      // Display the user entry and checking result when the game is ready //
+      led_strip = display_manager.led_out;  
+    }
     // End of LED Strips connections //
     
     // Connect all the signals //

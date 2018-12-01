@@ -17,6 +17,7 @@
     <src>boolean.luc</src>
     <src>single_adder.luc</src>
     <src>shifter.luc</src>
+    <src>display_gradient.luc</src>
     <ucf>led_strip.ucf</ucf>
     <ucf>buttons.ucf</ucf>
     <ucf lib="true">mojo.ucf</ucf>
