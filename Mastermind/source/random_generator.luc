@@ -1,0 +1,67 @@
+/*
+ * Linear Feedback Shift Register
+ * This is used to generate 16bits random number for the answer and the initial input
+ */
+module random_generator (
+    input clk,              // clock
+    input rst,              // reset
+    input init[1],          // Signal to stop the FSM looping
+    input alu_result[16],   // ALU AND result
+    output ans[16],         // Answer of the game
+    output init_input[16],  // Initial row configuration
+    output start[1],        // Flag to state the random number is ready to read
+    output alu_a[16],       // ALU input A
+    output alu_b[16]        // ALU input B
+  ) {
+
+  .clk(clk) {
+    .rst(rst) {
+      dff ans_lfsr[16];      // Store the random game answer
+      dff init_lfsr[16];     // Store the random initial row value
+      dff ans_bit[16];       // Store the output of the x16+x14+x13+x11
+      dff init_bit[16];      // Store the output of the x16+x14+x13+x11
+      fsm state = {INIT, PROCESS, ANS, INPUT, DONE};
+    }
+  }
+
+  // Define the MASk to filter the output(Select the lower 2bits of each 4bits window) //
+  const MASK = 4x{4b0011};
+
+  always {
+    // Connect the output signal to the respective storage //
+    ans = 0;
+    init_input = 0;
+    start = 0;
+    alu_a = 0;
+    alu_b = MASK;
+
+    case(state.q) {
+      state.INIT:
+        ans_lfsr.d = 16hF1C4;    // Seed value for generate game answer
+        init_lfsr.d = 16hE31B;   // Seed value for generate initial row configuration
+        state.d = state.PROCESS;
+      state.PROCESS:
+        // Generate random bit for game answer
+        ans_bit.d = ((ans_lfsr.q >> 0) ^ (ans_lfsr.q >> 2) ^ (ans_lfsr.q >> 3) ^ (ans_lfsr.q >> 5)) & 1;
+        ans_lfsr.d = (ans_lfsr.q >> 1) | (ans_bit.q << 15);
+        // Generate random bit for initial row configuration
+        init_bit.d = ((init_lfsr.q >> 0) ^ (init_lfsr.q >> 2) ^ (init_lfsr.q >> 3) ^ (init_lfsr.q >> 5)) & 1;
+        init_lfsr.d = (init_lfsr.q >> 1) | (init_bit.q << 15);
+        if (init)
+          state.d = state.ANS;
+      state.ANS: // Filter the generated answer
+        alu_a = ans_lfsr.q;  
+        ans_lfsr.d = alu_result;
+        state.d = state.INPUT;
+      state.INPUT:  // Filter the generated initial user entry
+        alu_a = init_lfsr.q;
+        init_lfsr.d = alu_result;
+        state.d = state.DONE;
+      state.DONE:
+        start = 1;  // Set the flag for done generating
+        ans = ans_lfsr.q;
+        init_input = init_lfsr.q;
+    }
+
+  }
+}

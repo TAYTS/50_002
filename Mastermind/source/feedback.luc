@@ -1,0 +1,56 @@
+/*
+ * This module check the row index and the checker result then decide the end signal.
+ * It will pass the checking result to the board_manager and save it.
+ */
+module feedback (
+    input clk,             // clock
+    input rst,             // reset
+    input chk_done[1],     // Flag for done checking the user entry 
+    input chk_result[16],  // Checking result(Receive the checking result from checker)
+    input row_idx[3],      // Current row index
+    output ending[2],      // Signal for game status(0: CONTINUE, 1: PENDING, 2: WIN, 3: LOSS)
+    output feedback[16]    // Checking result(For storing the checking result into board_manager)
+  ) {
+
+  // Define the constant //
+  const CONTINUE = 2b00;
+  const PENDING = 2b01;
+  const WIN = 2b10;
+  const LOSS = 2b11;
+  const DEFAULT_FEEDBACK = 16x{1b1};
+  // End of constant definition //
+
+  // All correct //
+  const WINING_TEMP = 4x{4b0110};
+
+  .clk(clk) {
+    .rst(rst) {
+      dff chk_result_storage[16];  // Save the checker result locally
+      fsm state = {INIT, PROCESS};
+    }
+  }
+
+  always {
+    feedback = DEFAULT_FEEDBACK;  // Set invalid feedback value
+    ending = PENDING;             // Set the ending to always PENDING unless in the PROCESS state
+    case (state.q) {
+      state.INIT:
+        if (chk_done) {   // When the checker done checking
+          state.d = state.PROCESS;
+          chk_result_storage.d = chk_result;  // Save the checker result to local storage
+        }
+      state.PROCESS:
+        if (chk_result_storage.q == WINING_TEMP) {  // All correct
+          ending = WIN;
+        } else {
+          if (row_idx == 7) {  // User hit the maximum number of trials
+            ending = LOSS;
+          } else {  // Input not correct and trial available; continue(Return to INIT state)
+            ending = CONTINUE;
+            state.d = state.INIT;
+          }
+        }
+        feedback = chk_result_storage.q;  // Pass the checking result to board_manager and save it 
+    }
+  }
+}
