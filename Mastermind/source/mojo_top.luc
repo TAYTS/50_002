@@ -15,60 +15,83 @@ module mojo_top (
     output io_seg [8],      // 7-segment LEDs on IO Shield
     output io_sel [4],      // Digit select on IO Shield
     input io_button [5],    // 5 buttons on IO Shield
-    input io_dip [3][8],   // DIP switches on IO Shield
-    input button[5],
-    output led_strip[8]
+    input io_dip [3][8],    // DIP switches on IO Shield
+    input button[5],        // Button interface
+    output led_strip[8]     // LED Strips
   ) {
-  
-  sig rst;                  // reset signal
-  sig mrst;
-  sig data_block[11];
-  sig grb[24];
-  
-  
-  const GRB = {
-    24h00ff00,
-    24h000000,
-    24hffffff,
-    24hffff00,
-    24h00ace6,
-    24h0000ff,
-    24h00ff00,
-    24hff0000
-  };
 
-  var r;
+  // Define constant
+  const AND = 6b011000;
+  const ADD = 6b000000;
+  const COMPARE = 6b110011;
+  const RANDOM_GENERATOR = 2b00;
+  const INPUT_MANAGER = 2b01;
+  const CHECKER = 2b10;
+  const WIN = 2b10;
+  const LOSS = 2b11;
+  // End of constant definition
+  
+  // Define all the signals required //
+  sig rst;          // reset signal
+  sig mrst;         // manual reset signal
+  sig init;         // initialise signal
+  sig start;        // start signal
+  sig chk_done;     // checking status
+  sig ending[2];    // game end signal
+  sig toggle[4];    // button pressed by the user
+  sig alusel[2];    // signal for choosing the dta input for the ALU
+  sig alufn[6];     // signal for the ALU operation
+  sig confirm;      // signal for confirm the entry
+  sig hard_rst;     // signal for manual reset
+  sig abort;        // signal for abort the manual reset
+  // End of signals definition //
+
+  // Define the ALU Manager submodule //
+  alu_manager alu_manager;
+  // End of ALU Manager submodule definition //
+  
   .clk(clk) {
     // The reset conditioner is used to synchronize the reset signal to the FPGA
     // clock. This ensures the entire FPGA comes out of reset at the same time.
     reset_conditioner reset_cond;
-    button_conditioner start;
-    button_conditioner btn1;
-    button_conditioner btn2;
-    button_conditioner btn3;
-    button_conditioner btn4;
-    button_conditioner check(#MIN_DELAY(40));
-    button_conditioner done(#MIN_DELAY(40));
-    edge_detector start_edge(#RISE(0), #FALL(1));
+    // Define the module to filter the button signal //
+    button_conditioner ctrl_btn(#MIN_DELAY(40));
+    button_conditioner btn1(#MIN_DELAY(40));
+    button_conditioner btn2(#MIN_DELAY(40));
+    button_conditioner btn3(#MIN_DELAY(40));
+    button_conditioner btn4(#MIN_DELAY(40));
+    edge_detector ctrl_edge(#RISE(0), #FALL(1));
     edge_detector btn1_edge(#RISE(0), #FALL(1));
     edge_detector btn2_edge(#RISE(0), #FALL(1));
     edge_detector btn3_edge(#RISE(0), #FALL(1));
     edge_detector btn4_edge(#RISE(0), #FALL(1));
-    edge_detector check_edge(#RISE(1), #FALL(0));
-    edge_detector done_edge(#RISE(1), #FALL(0));
     
     .rst(rst | mrst) {
-      random_generator rand_gen;
+      // Define all the submodules needed //
+      random_generator random_generator;
       input_manager input_manager;
-      dff counter[21];
+      board_manager board_manager;
+      checker checker;
+      feedback feedback;
       display_manager display_manager;
+      // End of submodules definition //
+
+      // Define all the FSMs and DFFs needed //
+      // game state
+      fsm state = {IDLE, IDLE_RAND, PLAY, CHECKING, FEEDBACK, END};
+      // Manual reset state
+      fsm hard_reset = {IDLE, R1, R2};
+      // Save the game mode
+      dff mode[1];
+      // End of FSMs and DFFs definition //
     }
   }
   
   always {
+    // Standard IO definition //
     reset_cond.in = ~rst_n; // input raw inverted reset signal
     rst = reset_cond.out;   // conditioned reset
-    
+    mrst = 0;
     led = 8h00;             // turn LEDs off
     spi_miso = bz;          // not using SPI
     spi_channel = bzzzz;    // not using flags
@@ -77,9 +100,11 @@ module mojo_top (
     io_led = 3x{{8h00}};    // turn LEDs off
     io_seg = 8hff;          // turn segments off
     io_sel = 4hf;           // select no digits
+    // End of standard IO definition //
     
-    start.in = button[0];
-    start_edge.in = start.out;
+    // Connect all the buttons //
+    ctrl_btn.in = button[0];
+    ctrl_edge.in = ctrl_btn.out;
     btn1.in = button[1];
     btn1_edge.in = btn1.out;
     btn2.in = button[2];
@@ -88,51 +113,165 @@ module mojo_top (
     btn3_edge.in = btn3.out;
     btn4.in = button[4];
     btn4_edge.in = btn4.out;
-    check.in = io_button[0];
-    check_edge.in = check.out;
-    done.in = io_button[1];
-    done_edge.in = done.out;
+    // End of button connections //
     
-    rand_gen.stop = start_edge.out;
-    
-    input_manager.start = rand_gen.read;
-    input_manager.row_entry = rand_gen.init;
-    input_manager.check = check_edge.out;
-    input_manager.done = done_edge.out;
-    input_manager.mode = 0;
-    input_manager.toggle = c{btn1_edge.out, btn2_edge.out, btn3_edge.out, btn4_edge.out};
-    
-    //io_led[0] = input_manager.out[7:0];
-    //io_led[1] = input_manager.out[15:8];
-    
-    //if (check_edge.out)
-    //  io_led[2][0] = 1b1;
-    //if (done_edge.out)
-    //  io_led[2][1] = 1b1;
-
-    display_manager.input_board = {
-      4x{{4b0000}},
-      4x{{4b0001}},
-      4x{{4b0010}},
-      4x{{4b0011}},
-      4x{{4b0000}},
-      4x{{4b0001}},
-      4x{{4b0010}},
-      4x{{4b0011}}
-    };
-    
-    display_manager.feedback_board = {
-      4x{{4b0100}},
-      4x{{4b0101}},
-      4x{{4b0110}},
-      4x{{4b0100}},
-      4x{{4b0101}},
-      4x{{4b0110}},
-      4x{{4b0100}},
-      4x{{4b0101}}
-    };
-
+    // Connect LED Strips to the display_manager.led_out //
     led_strip = display_manager.led_out;
-    io_led[0] = display_manager.test;
+    // End of LED Strips connections //
+    
+    // Connect all the signals //
+    init = btn1_edge.out | btn2_edge.out;
+    start = random_generator.start;
+    chk_done = checker.chk_done;
+    ending = feedback.ending;
+    toggle = c{btn1_edge.out, btn2_edge.out, btn3_edge.out, btn4_edge.out};
+    alusel = 0;
+    alufn = 0;
+    confirm = ctrl_edge.out;
+    hard_rst = ctrl_edge.out;
+    abort = btn1_edge.out | btn2_edge.out | btn3_edge.out | btn4_edge.out;
+    // End of signal connection //
+    
+    
+    // Define the default values of the submodules //
+    // random_generator //
+    random_generator.init = 0;
+    random_generator.alu_result = alu_manager.out;
+    
+    // input_manager //
+    input_manager.start = 0;
+    input_manager.row_entry = alu_manager.out;
+    input_manager.toggle = 0;
+    input_manager.mode = mode.q;
+    input_manager.check = confirm;
+    input_manager.chk_done = 0;
+    
+    // board_manager //
+    board_manager.start = 0;
+    board_manager.ending = ending;
+    board_manager.chk_done = 0;
+    board_manager.ans = random_generator.ans;
+    board_manager.new_row = input_manager.new_row;
+    board_manager.feedback = feedback.feedback;
+    
+    // checker
+    checker.usr_input = input_manager.new_row;
+    checker.ans = board_manager.ans_ref;
+    checker.confirm = 0;
+    checker.alu_result = alu_manager.out;
+    
+    // feedback
+    feedback.chk_done = 0;
+    feedback.chk_result = checker.chk_result;
+    feedback.row_idx = board_manager.current_idx;
+    
+    // display_manager
+    display_manager.input_board = board_manager.board_out;
+    display_manager.feedback_board = board_manager.feedback_out;
+    
+    // alu_manager
+    alu_manager.random_generator_a = random_generator.alu_a;
+    alu_manager.random_generator_b = random_generator.alu_b;
+    alu_manager.input_manager_a = input_manager.alu_a;
+    alu_manager.input_manager_b = input_manager.alu_b;
+    alu_manager.checker_a = checker.alu_a;
+    alu_manager.checker_b = checker.alu_b;
+    // End of submodules default values definition //
+
+    // Answer for reference //
+    // Comment these 2 line if you do not want to display the answer on the Mojo led //
+    io_led[2] = board_manager.ans_ref[7:0];
+    led = board_manager.ans_ref[15:8];
+
+    // Game states
+    case(state.q) {
+      state.IDLE:  // Select the game mode
+        // Select game mode using button 1 and 2 //
+        // Stop the LFSR in the random_generator when the user selected the game mode//
+        if (btn1_edge.out) {         // Button 1: Normal mode
+          mode.d = 0;
+        } else if (btn2_edge.out) {  // Button 2: Window mode
+          mode.d = 1;
+        }
+        // End of game mode selection //
+        
+        // Wait for the initialise signal(init) //
+        if (init) {
+          random_generator.init = init;
+          state.d = state.IDLE_RAND;
+        }
+        // End of initialise signal(init) //
+      
+      state.IDLE_RAND:  // Waiting for the random_generator to finish generating the data
+        // Set the option for the ALU Manager //
+        alusel = RANDOM_GENERATOR;
+        alufn = AND;
+        if (start) {
+          input_manager.start = start;
+          input_manager.row_entry = random_generator.init_input;
+          board_manager.start = start;
+          state.d = state.PLAY;
+        }
+      state.PLAY:  // Game play state
+        // Set the option for the ALU Manager //
+        alusel = INPUT_MANAGER;
+        alufn = ADD;
+        if (toggle) {
+          input_manager.toggle = toggle; 
+        }
+        if (confirm) {
+          state.d = state.CHECKING;
+          checker.confirm = confirm;
+        }
+      state.CHECKING:
+        alusel = CHECKER;
+        alufn = COMPARE;
+        if (chk_done) {
+          state.d = state.FEEDBACK;
+          input_manager.chk_done = chk_done;
+          board_manager.chk_done = chk_done;
+          feedback.chk_done = chk_done;
+        }
+      state.FEEDBACK:
+        if (ending > 1) {  // Either WIN or LOSS
+          state.d = state.END; 
+        } else {
+          state.d = state.PLAY; 
+        }
+      state.END:
+        if (ending == WIN) {
+          
+        } else if (ending == LOSS) {
+          
+        }
+    }
+    
+    // Handling the hard reset //
+    case(hard_reset.q) {
+      hard_reset.IDLE:
+        if (ctrl_edge.out) {
+          hard_reset.d = hard_reset.R1;
+        } else if (toggle) {
+          hard_reset.d = hard_reset.IDLE;
+        }
+      hard_reset.R1:
+        if (ctrl_edge.out) {
+          hard_reset.d = hard_reset.R2;
+        } else if (toggle) {
+          hard_reset.d = hard_reset.IDLE;
+        }
+      hard_reset.R2:
+        if (ctrl_edge.out) {
+          mrst = 1;
+        } else if (toggle) {
+          hard_reset.d = hard_reset.IDLE;
+        }
+    }
+    // End of hard reset handling //
+    
+    
+    // Set the ALU Manager option //
+    alu_manager.alufn = alufn;
+    alu_manager.alusel = alusel;
   }
 }
