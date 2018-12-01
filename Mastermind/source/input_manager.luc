@@ -5,43 +5,89 @@ module input_manager (
     input clk,              // clock
     input rst,              // reset
     input start[1],         // Flag to start the game
-    input row_entry[16],    // Row entry
+    input row_entry[16],    // Row entry after ALU ADD operation
     input toggle[4],        // Signal for increment the corresponding value in the row entry
     input mode[1],          // Game mode(0: Normal mode, 1: Flip neighbour mode)
     input check[1],         // Flag to stop the user from toggle the input (Checking result)
-    input done[1],          // Flag for done checking the user input
-    output out[16]          // New row entry configuration
+    input chk_done[1],      // Flag for done checking the user input
+    output alu_a[16],       // ALU input A
+    output alu_b[16],       // ALU input B
+    output new_row[16]      // New row entry configuration
   ) {
-  flipper flipper;
   .clk(clk) {
     .rst(rst) {
       fsm state = {INIT, PLAY, CHECK};
-    } 
+      dff current_row[16];
+    }
   }
+  
+  // Define the toggle position for Mode: 1 //
+  const FLIP1 = c{4b0001, 4b0001, 4b0000, 4b0000};
+  const FLIP2 = c{4b0001, 4b0001, 4b0001, 4b0000};
+  const FLIP3 = c{4b0000, 4b0001, 4b0001, 4b0001};
+  const FLIP4 = c{4b0000, 4b0000, 4b0001, 4b0001};
+  // End of definition for Mode: 1 toggle position //
+
+  // Define the toggle position for Mode: 0 //
+  const NFLIP1 = c{4b0001, 3x{4b0}};
+  const NFLIP2 = c{4b0, 4b0001, 2x{4b0}};
+  const NFLIP3 = c{2x{4b0}, 4b0001, 4b0};
+  const NFLIP4 = c{3x{4b0}, 4b0001};
+  // End of definition for Mode: 1 toggle position //
+
+  // Used to filter the output to only select the lower 2bits of each 4bits window //
+  const MASK = 4x{4b0011};
 
   always {
-    // Set the output
-    out = flipper.out;
-
-    // Connect all the input for the flipper submodule
-    flipper.usr_input = row_entry;
-    flipper.instr = 0;  // Prevent the user from changing the input except state.PLAY
-    flipper.mode = mode;
-        
+    // Connect the output // 
+    alu_a = current_row.q;
+    new_row = current_row.q;
+    // End of output connection //
+    
     case (state.q) {
       state.INIT:
-        if (start) {
+        if (start) {  // Save the initial row entry from the random_generator
+          current_row.d = row_entry;
           state.d = state.PLAY;
-        }  
+        }
       state.PLAY:
-        flipper.instr = toggle;
-        if (check) {
+        if (toggle != 0) {  // Update the current row entry when user press the toggle button
+          // Filter the output from the ALU to select only the lower 2bits of each 4bits window
+          current_row.d = row_entry & MASK;
+        }
+        if (check) {  // Go to CHECK state to prevent user from changing the input
           state.d = state.CHECK;
         }
       state.CHECK:
-        if (done) {
+        if (chk_done) {  // Return to PLAY state when the checker submodule done checking
           state.d = state.PLAY;
         }
+    }
+    
+    // Define the ALU input B based on the mode and the pressed toggle button
+    case(toggle) {
+      4b1000:
+        if (mode)
+          alu_b = FLIP1;
+        else
+          alu_b = NFLIP1;
+      4b0100:
+        if (mode)
+          alu_b = FLIP2;
+        else
+          alu_b = NFLIP2;
+      4b0010:
+        if (mode)
+          alu_b = FLIP3;
+        else
+          alu_b = NFLIP3;
+      4b0001:
+        if (mode)
+          alu_b = FLIP4;
+        else
+          alu_b = NFLIP4;
+      default:
+        alu_b = 16b0;
     }
     
   }
