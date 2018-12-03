@@ -1,0 +1,24 @@
+/*
+ * Shift the input A(Shift Left, Shift Right, Shift Right Arithmetic).
+ * Amount of bit shifting determine by signal B.
+ */
+module shifter (
+    input a[16],        // Input signal A
+    input b[4],         // Input signal B - determine the amount of bits need to shift
+    input alufn[2],     // ALUFN[1:0] - determine the shifting operation
+    output out[16]      // Output of the shifter
+  ) {
+
+  always {
+    case (alufn) {
+      b00:  // Shift left
+        out = a << b;
+      b01:  // Shift right
+        out = a >> b;
+      b11:  // Shift right with sign extension
+        out = $signed(a) >>> b;
+      default:  // No shifting by default
+        out = a;   
+    }
+  }
+}

@@ -1,0 +1,30 @@
+/*
+ * Compare the input signal A and B using the z, v, n output from the 16 bits addder submodule
+ */
+module compare (
+    input z,          // Input signal from adder: z(Check all output is 0)
+    input v,          // Input signal from adder: v(Check overflow)
+    input n,          // Input signal from adder: n(Check negative output)
+    input alufn[2],   // ALUFN[2:1]
+    output out[16]    // Output of the compare submodule
+  ) {
+  
+  sig lsb[1];  // Signal for storing the least significant bit(LSB) of the output
+
+  always {
+    case (alufn) {
+      2b01:  // A = B, LSB = z
+        lsb = z;
+      2b10:  // A < B, LSB = n xor v
+        lsb = n ^ v;
+      2b11:  // A <= B, LSB = z + (n xor v)  
+        lsb = z | (n ^ v);
+      default:
+        lsb = 1b0;  
+    }
+    
+    // Output the result in 16 bits
+    out[15:1] = 15b0;
+    out[0] = lsb; 
+  }
+}
