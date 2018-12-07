@@ -6,7 +6,7 @@
 # MATRIXMIND
 A modified version of Mastermind.
 
-## Game Setup:
+### Game Setup:
 * Press the GREEN button to initialise the game.
   * Random generate the color code and the initial row input using the linear feedback shift register.
 * Press the first or second YELLOW button to select the game mode.
@@ -19,7 +19,6 @@ A modified version of Mastermind.
 * Press the GREEN button 3 times continuously to reset the game.
 
 ### Game Rules:
-* When toggle the color of each input, the neighbour inputs will be affected.
 * The color change in the sequence of RED -> GREEN -> BLUE -> PURPLE.
 * The analysis result is as follow:
   * ORANGE: Correct position and color
