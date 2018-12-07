@@ -6,7 +6,6 @@
     <src>input_manager.luc</src>
     <src>display_manager.luc</src>
     <src>alu_manager.luc</src>
-    <src>board.luc</src>
     <src top="true">mojo_top.luc</src>
     <src>alu16.luc</src>
     <src>compare.luc</src>
